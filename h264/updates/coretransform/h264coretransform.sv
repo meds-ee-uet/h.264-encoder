@@ -150,7 +150,7 @@ end
 
 // ########################################
 
-always_comb
+always @(*)
 begin
     // --initial helpers (TT+1) (10bit from 9bit)
     xt0_in = {xx0[8], xx0} + {xx3[8], xx3};			//--xx0 + xx3
@@ -178,7 +178,7 @@ end
 
 // ########################################
 
-always_comb
+always @(*)
 begin
     // --now compute row of FF matrix at TT+2 (12bit from 10bit)
     ffx0_in = {xt0[9], xt0[9], xt0} + {xt1[9], xt1[9], xt1};	    //--xt0 + xt1
@@ -237,7 +237,7 @@ end
 // ########################################
 
 // Muxes before Pipeline #6
-always_comb
+always @(*)
 begin
     case(iyn)
         4'd15 : ynyx = {ROW0, COL0};
@@ -297,7 +297,7 @@ begin
 end
 
 // Pipeline #6 & Register below Pipeline #6
-always_comb
+always @(*)
 begin
     // en_pipeline6 Signal Generator for pipeline # 06
     if ((ixx == 5) || (iyn != 0))
@@ -312,7 +312,7 @@ begin
         valid1_in = 1'b0;
 end
 
-// Signals used in Pipeline #6 are generated above and in always_comb block
+// Signals used in Pipeline #6 are generated above and in always @(*) block
 always_ff @(posedge CLK)
 begin
     if (en_pipeline6)
@@ -335,7 +335,7 @@ end
 
 // ########################################
 
-always_comb
+always @(*)
 begin
     yt0_in = {ff0p[11], ff0p} + {ff3p[11], ff3p};	    //--ff0 + ff3
     yt1_in = {ff1p[11], ff1p} + {ff2p[11], ff2p};	    //--ff1 + ff2
@@ -366,7 +366,7 @@ end
 // ########################################
 
 // MUX before Pipeline # 08
-always_comb
+always @(*)
 begin
     //--compute final YNOUT values (14bit from 13bit)
     // yny -> yny1 -> yny2 ('yny2' is 'yny' after delay of '2 clock cycles')
@@ -390,7 +390,7 @@ end
 // Pipeline # 08 (ENDING)
 always_ff @(posedge CLK)
 begin
-    // OUTPUT "ynout_in"is computed at the end of always_comb block
+    // OUTPUT "ynout_in"is computed at the end of always @(*) block
 
     if (en_pipeline8)
     begin
