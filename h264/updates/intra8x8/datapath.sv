@@ -1,3 +1,8 @@
+//============================ Datapath Module ============================//
+// This module implements the datapath for a video processing pipeline. 
+// It processes incoming pixel data, stores it in the appropriate locations,
+// and performs operations like differential coding with top macroblock data.
+//===========================================================================//
 module datapath(
         input logic CLK2,
         input logic NEWSLICE,
@@ -20,8 +25,9 @@ module datapath(
         output logic [31:0] BASEO = 32'd0,
         output logic [35:0] DATAO = 36'd0
     );
+    //================================= Internal Signals =================================//
+    // The following signals and registers are used internally for processing pixel data.
      //from controller
-        //logic READYO;
         logic enable_S0;
         logic enable_S1;
         logic enable_S2;
@@ -124,7 +130,7 @@ module datapath(
             //CMODEO = cmodeoi;	//always 00
             //		
         end
-    
+        //================================= Processing Logic =================================//
         always_ff @( posedge CLK2 ) begin
             if (STROBEI) begin
                 pix[istate] <= DATAI;

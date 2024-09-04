@@ -104,9 +104,10 @@ module testbench_file();
         $finish;
     end
     // Monitor and display output
-    initial begin
-        $monitor("At time %t, STROBEO = %b, DCSTROBEO = %b, READYI = %b, DATAO = %h", 
-                 $time, STROBEO, DCSTROBEO, READYI, DATAO);
+    initial 
+    begin
+        $monitor("At time %t, STROBEO = %b, DCSTROBEO = %b, READYI = %b, XXC = %b, XXINC = %b, XXO = %b, CMODEO = %b, DCDATAO = %h, BASEO = %h, DATAO = %h",
+         $time, STROBEO, DCSTROBEO, READYI, XXC, XXINC, XXO, CMODEO, DCDATAO, BASEO, DATAO);
     end
 
 endmodule

@@ -1,3 +1,12 @@
+
+// Description: State machine controller for enabling signals based on input 
+//              conditions and state transitions.
+//
+// Author: Muhammad Ramzan EED, UET Lahore
+// Date: 25-08-2024
+//------------------------------------------------------------------------------
+
+//============================ Controller Module ============================//
 module controller(
     input  logic CLK2,
     input  logic NEWLINE,
@@ -29,7 +38,7 @@ module controller(
     output logic enable_S14,
     output logic enable_S15
 );
-
+//============================ Parameter Definitions ============================//
 parameter IDLE = 4'b0000;
 parameter S1   = 4'b0001;
 parameter S2   = 4'b0010;
@@ -47,15 +56,9 @@ parameter S13  = 4'b1101;
 parameter S14  = 4'b1110;
 parameter S15  = 4'b1111;
 
-//ogic crcb = 1'b0;			//which of cr/cb
-//ogic [1:0] quad = 2'd0;	//which of 4 blocks
-//ogic [1:0] oquad = 2'd0;	//which of 4 blocks output
-//ogic [4:0] istate = 5'd0;	//which input word
-//ogic fbpending = 1'b0;		//wait for feedback
-
 logic [3:0] c_state;
 logic [3:0] n_state;
-
+//============================ State Register ============================//
 always_ff @(posedge CLK2 or negedge NEWLINE) 
 begin
     if (NEWLINE) begin
@@ -64,7 +67,7 @@ begin
         c_state <= n_state;
     end
 end
-
+//============================ Next State Logic ============================//
 always_comb
 begin
     enable_S0  = 1'b0;
@@ -88,7 +91,7 @@ begin
     // Next state logic and enable signal generation
     case (c_state)
         IDLE: begin
-            if (istate[4] == crcb) 
+            if (istate[4] != crcb) 
             begin
                 enable_S0 = 1'b1;
                 n_state = IDLE;
