@@ -91,7 +91,7 @@ begin
     // Next state logic and enable signal generation
     case (c_state)
         IDLE: begin
-            if (istate[4] != crcb) 
+            if (istate[4] == crcb) 
             begin
                 enable_S0 = 1'b1;
                 n_state = IDLE;
