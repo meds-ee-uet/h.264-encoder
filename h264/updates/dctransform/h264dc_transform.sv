@@ -32,7 +32,7 @@ module h264dc_transform #(
 
     assign en_counter1 = (enablei==1'b1 && RESET==1'b0);
     assign en_counter2 = (iout==1'b1 && (READYO==1'b1 || (TOGETHER==8'd1 && ixx!==0)) && RESET==1'b0);
-    assign en_mux = {en_counter1,en_counter2};
+    assign en_mux = {en_counter1 && (ixx>2),en_counter2 && (ixx>2)};
 
     h264dc_transform_controller controller(
                             .CLK(CLK),
@@ -124,7 +124,8 @@ module h264dc_transform #(
             case(en_mux)
             2'b01: iout_in = 1'b0;
             2'b10: iout_in = 1'b1;
-            default:iout_in = iout;
+            2'b11: iout_in = 1'b0;
+            default: iout_in = iout;
             endcase
         end
 
