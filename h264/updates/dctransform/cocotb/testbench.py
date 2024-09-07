@@ -55,8 +55,10 @@ async def test_dc_transform(dut):
     print("Successfully converted input.png into pixels")
 
     # Initialize lists to store input and output pixels
-    input_pixel_array = np.zeros((height, width), dtype=np.uint8)
-    output_pixel_array = np.zeros((height, width), dtype=np.uint8)
+    input_pixel_array = np.zeros((height, width))
+    output_pixel_array = np.zeros((height, width))
+
+    await RisingEdge(dut.CLK)
 
     for row in range(0, height, 2):
         for col in range(0, width, 2):
@@ -66,16 +68,19 @@ async def test_dc_transform(dut):
                 pixels[row + 1][col], pixels[row + 1][col + 1]
             ]
 
+            dut.READYO.value = 0
+
             # Send the pixel block to the DUT
             for i in range(2):
                 xxin = (
                     (pixel_block[i*2 + 1] & 0xFF) << 8 |
                     (pixel_block[i*2] & 0xFF)
                 )
-
+                #print("Waiting for READYI")
                 while not dut.READYI.value:
                     #print(f"Current VALID value: {dut.READYI.value}")
                     await RisingEdge(dut.CLK)
+                #print("READYI DETECTED")
 
                 for idx in range(2):
                     input_pixel_array[row + i, col + idx] = pixel_block[i*2 + idx]
@@ -83,19 +88,22 @@ async def test_dc_transform(dut):
                 dut.ENABLE.value = 1
                 dut.XXIN.value = xxin
                 await RisingEdge(dut.CLK)
-                await RisingEdge(dut.CLK)  # Two clock cycles for sending two pixels
-                dut.ENABLE.value = 0
+                await RisingEdge(dut.CLK)
+            
+            dut.ENABLE.value = 0
+            dut.READYO.value = 1
 
             # Wait for VALID signal
-            while dut.VALID.value:
+            #print("WAITING FOR VALID")
+            while not dut.VALID.value:
               await RisingEdge(dut.CLK)
+            #print("VALID DETECTED")
 
             # Collect output pixels from DUT
             for i in range(2):
                 output_pixel = int(dut.YYOUT.value)  # Ensure you get the output as an integer
                 
                 # Write output pixels to the array based on REVERSE_ZIGZAG_ORDER
-                x, y = REVERSE_ZIGZAG_ORDER[i]
                 output_pixel_array[row + REVERSE_ZIGZAG_ORDER[i][0], col + REVERSE_ZIGZAG_ORDER[i][1]] = output_pixel
                 
                 await RisingEdge(dut.CLK)

@@ -63,9 +63,9 @@ begin
 endcase
 end
 
-always_ff @ (posedge CLK)
+always_ff @ (posedge CLK or negedge RESET)
 begin
-    if(RESET)
+    if(~RESET)
        c_state <= S0;
     else
        c_state <= n_state;    

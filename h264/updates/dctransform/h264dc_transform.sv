@@ -30,14 +30,14 @@ module h264dc_transform #(
     logic [1:0] en_mux;
     logic en_pipeline1,en_pipeline2,en_pipeline3,en_pipeline4; 
 
-    assign en_counter1 = (enablei==1'b1 && RESET==1'b0);
-    assign en_counter2 = (iout==1'b1 && (READYO==1'b1 || (TOGETHER==8'd1 && ixx!==0)) && RESET==1'b0);
+    assign en_counter1 = (enablei==1'b1 && RESET==1'b1);
+    assign en_counter2 = (iout==1'b1 && (READYO==1'b1 || (TOGETHER==8'd1 && ixx!==0)) && RESET==1'b1);
     assign en_mux = {en_counter1 && (ixx>2),en_counter2 && (ixx>2)};
 
     h264dc_transform_controller controller(
                             .CLK(CLK),
                             .RESET(RESET),
-                            .ENABLE(ENABLE),
+                            .ENABLE(en_counter1 || en_counter2),
                             .en_pipeline1(en_pipeline1),
                             .en_pipeline2(en_pipeline2),
                             .en_pipeline3(en_pipeline3),
@@ -100,7 +100,7 @@ module h264dc_transform #(
         end
         always_comb
         begin
-            if (iout==1'b1 && (READYO==1'b1 || (TOGETHER==8'd1 && ixx!==0)) && RESET==1'b0) begin
+            if (iout==1'b1 && (READYO==1'b1 || (TOGETHER==8'd1 && ixx!==0)) && RESET==1'b1) begin
                 if (ixx==2'd0)begin
                     YYOUT_OUT = xx00_out + xx10_out;	//--out in raster scan order
             end
@@ -113,11 +113,7 @@ module h264dc_transform #(
                 else begin
                     YYOUT_OUT = xx01_out - xx11_out;
                 end 
-                valid_next = 1'b1;
             end
-            else begin
-                valid_next = 1'b0;
-            end 
         end
         always_comb 
         begin
@@ -129,8 +125,16 @@ module h264dc_transform #(
             endcase
         end
 
-        always_ff @(posedge CLK) begin
-            if (RESET) begin
+        always_comb
+        begin
+            if (en_counter2)
+                valid_next = 1;
+            else
+                valid_next = 0;
+        end
+
+        always_ff @(posedge CLK or negedge RESET) begin
+            if (~RESET) begin
                 YYOUT <= 16'd0;
                 iout <= 1'b0;
                 VALID <=1'b0;

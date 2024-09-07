@@ -53,8 +53,8 @@ async def test_core_transform(dut):
     print("Successfully converted input.png into pixels")
 
     # Initialize lists to store input and output pixels
-    input_pixel_array = np.zeros((height, width), dtype=np.uint8)
-    output_pixel_array = np.zeros((height, width), dtype=np.uint8)
+    input_pixel_array = np.zeros((height, width))
+    output_pixel_array = np.zeros((height, width))
 
     for row in range(0, height, 4):
         for col in range(0, width, 4):
