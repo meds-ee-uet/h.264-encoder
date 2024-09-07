@@ -4,11 +4,12 @@
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 
-VERILOG_SOURCES += $(PWD)/../h264coretransform.sv $(PWD)/../h264coretransform_controller.sv $(PWD)/wrapper/h264coretransform_wrapper.sv
+VERILOG_SOURCES += $(PWD)/../h264dc_transform.sv $(PWD)/../h264dc_transform_controller.sv $(PWD)/wrapper/h264dc_transform_wrapper.sv
+#$(PWD)/wrapper/h264coretransform_wrapper.sv
 # use VHDL_SOURCES for VHDL files
 
 # TOPLEVEL is the name of the toplevel module in your Verilog or VHDL file
-TOPLEVEL = h264coretransform_wrapper
+TOPLEVEL = h264dc_transform_wrapper
 
 # MODULE is the basename of the Python test file
 MODULE = testbench

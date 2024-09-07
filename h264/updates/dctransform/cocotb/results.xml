@@ -1,0 +1,6 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1725697690" />
+    <testcase name="test_dc_transform" classname="testbench" file="/home/muhammadbilal/work/h.264-encoder/h264/updates/dctransform/cocotb/testbench.py" lineno="42" time="32.24754357337952" sim_time_ns="2043650.001" ratio_time="63373.81935308219" />
+  </testsuite>
+</testsuites>
