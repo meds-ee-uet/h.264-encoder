@@ -74,8 +74,11 @@ async def test_dc_transform(dut):
                 )
 
                 while not dut.READYI.value:
-                    print(f"Current VALID value: {dut.READYI.value}")
+                    #print(f"Current VALID value: {dut.READYI.value}")
                     await RisingEdge(dut.CLK)
+
+                for idx in range(2):
+                    input_pixel_array[row + i, col + idx] = pixel_block[i*2 + idx]
 
                 dut.ENABLE.value = 1
                 dut.XXIN.value = xxin
@@ -84,15 +87,8 @@ async def test_dc_transform(dut):
                 dut.ENABLE.value = 0
 
             # Wait for VALID signal
-            print("Waiting for VALID...")
             while dut.VALID.value:
-              print(f"Current VALID value: {dut.VALID.value}")
               await RisingEdge(dut.CLK)
-            print("VALID is received...")
-
-           
-           
-           
 
             # Collect output pixels from DUT
             for i in range(2):
@@ -100,11 +96,11 @@ async def test_dc_transform(dut):
                 
                 # Write output pixels to the array based on REVERSE_ZIGZAG_ORDER
                 x, y = REVERSE_ZIGZAG_ORDER[i]
-                output_pixel_array[row + y, col + x] = output_pixel
+                output_pixel_array[row + REVERSE_ZIGZAG_ORDER[i][0], col + REVERSE_ZIGZAG_ORDER[i][1]] = output_pixel
                 
                 await RisingEdge(dut.CLK)
 
-            print(f"Successfully processed Row #{row} to #{row + 2}")
+        print(f"Successfully processed Row #{row} to #{row + 2}")
 
     print("Row processing completed!")
 
