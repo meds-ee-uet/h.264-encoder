@@ -147,9 +147,7 @@ module datapath(
         else if (NEWLINE) begin 
             tvalid <= 1'b1;
         end
-        //
         //Memory part 2
-        //
         if (FBSTROBE == 1'b1 && enable_S12) begin
             if (quad[0] == 1'b0 ) begin
                 pixleft[{1'b0,fbptr}] <= FEEDBI;
@@ -177,7 +175,6 @@ module datapath(
                     lvalid <= 1'b1;	//new macroblk
                 end
             end
-            //
             if (enable_S5 || enable_S9 ) begin
                 quad <= quad+1;
             end
