@@ -99,6 +99,21 @@ module h264intra8x8cc
 		end
 		//
 		if (!NEWLINE) begin
+			if (state == IDLE && istate[4] == crcb) begin 
+            end
+			else if (state == 4'd7 && oquad != 2'd3) begin 
+				state <= IDLE+4;			//loop to load all DC coeffs
+            end
+			else if (state == 4'd8 && READYO == 1'b0) begin
+            end
+			else if (state == 4'd14 && (fbpending == 1'b1 || FBSTROBE == 1'b1)) begin
+            end
+			else if (state == 4'd14 && quad != 2'd0) begin
+				state <= IDLE+8;			//loop for all blocks
+            end
+            else begin
+				state <= state+1;
+			end
 			//
 			if (state == 4'd15) begin 
 				crcb <= !crcb;
