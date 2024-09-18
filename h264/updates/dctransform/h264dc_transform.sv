@@ -25,7 +25,7 @@ module h264dc_transform #(
     logic [15:0] YYOUT_OUT = 16'd0;
     logic [1:0] ixx = 2'd0;
     logic iout = 1'b0;
-    logic valid_next;
+    //logic valid_next;
     logic iout_in;
     logic [1:0] en_mux;
     logic en_pipeline1,en_pipeline2,en_pipeline3,en_pipeline4; 
@@ -56,10 +56,10 @@ module h264dc_transform #(
                 xx00 = xxii;
             end
             else begin
-                xx00 = xx00 + xxii;
+                xx00 = xx00_out + xxii;
             end
             if (ixx == 2'd1) begin
-                xx01 = xx00 - xxii;
+                xx01 = xx00_out - xxii;
             end
             else begin
                 xx01 = xx01;
@@ -68,10 +68,10 @@ module h264dc_transform #(
                 xx10 = xxii;
             end
             else begin
-                xx10 = xx10 + xxii;
+                xx10 = xx10_out + xxii;
             end
             if (ixx == 2'd3) begin
-                xx11 = xx10 - xxii;
+                xx11 = xx10_out - xxii;
             end
             else begin
                 xx11 = xx11;
@@ -125,14 +125,6 @@ module h264dc_transform #(
             endcase
         end
 
-        always_comb
-        begin
-            if (en_counter2)
-                valid_next = 1;
-            else
-                valid_next = 0;
-        end
-
         always_ff @(posedge CLK or negedge RESET) begin
             if (~RESET) begin
                 YYOUT <= 16'd0;
@@ -142,7 +134,7 @@ module h264dc_transform #(
             else begin
                 YYOUT <= YYOUT_OUT;
                 iout <= iout_in;
-                VALID <= valid_next;
+                VALID <= en_counter2;
             end
         end
 endmodule

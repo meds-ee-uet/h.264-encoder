@@ -22,8 +22,8 @@ async def reset_sequence(dut):
     dut.RESET.value = 1
     await Timer(10, units='ns')
 
-# Reverse Zigzag Order Mapping for a 4x4 matrix
-REVERSE_ZIGZAG_ORDER = [(1,1),(1,0),(0,1),(0,0)]
+# Order Mapping for a 4x4 matrix
+ORDER = [(0,0),(0,1),(1,0),(1,1)]
 
 def image_to_grayscale_pixels(image_path):
     img = Image.open(image_path).convert('L')  # Convert image to grayscale
@@ -71,10 +71,9 @@ async def test_dc_transform(dut):
             dut.READYO.value = 0
 
             # Send the pixel block to the DUT
-            for i in range(2):
+            for i in range(4):
                 xxin = (
-                    (pixel_block[i*2 + 1] & 0xFF) << 8 |
-                    (pixel_block[i*2] & 0xFF)
+                    (pixel_block[i] & 0xFF)
                 )
                 #print("Waiting for READYI")
                 while not dut.READYI.value:
@@ -82,12 +81,10 @@ async def test_dc_transform(dut):
                     await RisingEdge(dut.CLK)
                 #print("READYI DETECTED")
 
-                for idx in range(2):
-                    input_pixel_array[row + i, col + idx] = pixel_block[i*2 + idx]
+                input_pixel_array[row + (i >= 2), col + (i % 2)] = pixel_block[i]
 
                 dut.ENABLE.value = 1
                 dut.XXIN.value = xxin
-                await RisingEdge(dut.CLK)
                 await RisingEdge(dut.CLK)
             
             dut.ENABLE.value = 0
@@ -103,8 +100,8 @@ async def test_dc_transform(dut):
             for i in range(2):
                 output_pixel = int(dut.YYOUT.value)  # Ensure you get the output as an integer
                 
-                # Write output pixels to the array based on REVERSE_ZIGZAG_ORDER
-                output_pixel_array[row + REVERSE_ZIGZAG_ORDER[i][0], col + REVERSE_ZIGZAG_ORDER[i][1]] = output_pixel
+                # Write output pixels to the array based on ORDER
+                output_pixel_array[row + ORDER[i][0], col + ORDER[i][1]] = output_pixel
                 
                 await RisingEdge(dut.CLK)
 
@@ -360,9 +357,9 @@ async def test_dc_transform(dut):
             # for i in range(2):
                 # output_pixel = [dut.YNOUT.value]
 # 
-                # Write output pixels to the array based on REVERSE_ZIGZAG_ORDER
+                # Write output pixels to the array based on ORDER
                 # for k in range(2):
-                    # output_pixel_array[row + REVERSE_ZIGZAG_ORDER[i][0], col + REVERSE_ZIGZAG_ORDER[i][1]] = output_pixel[k]
+                    # output_pixel_array[row + ORDER[i][0], col + ORDER[i][1]] = output_pixel[k]
                 # 
                 # await RisingEdge(dut.CLK)
 # 
@@ -491,7 +488,7 @@ async def test_dc_transform(dut):
 #     dut.RESET.value = 1
 
 # # Reverse Zigzag Order Mapping for a 4x4 matrix
-# REVERSE_ZIGZAG_ORDER = [(3,3),(3,2),(2,3),(1,3),(2,2),(3,1),(3,0),(2,1),(1,2),(0,3),(0,2),(1,1),(2,0),(1,0),(0,1),(0,0)]
+# ORDER = [(3,3),(3,2),(2,3),(1,3),(2,2),(3,1),(3,0),(2,1),(1,2),(0,3),(0,2),(1,1),(2,0),(1,0),(0,1),(0,0)]
 
 # def image_to_grayscale_pixels(image_path):
 #     img = Image.open(image_path).convert('L')  # Convert image to grayscale
@@ -565,7 +562,7 @@ async def test_dc_transform(dut):
             
 #             for i in range(16):
 #                 output_pixel = int(dut.YNOUT.value)
-#                 output_pixel_array[row + REVERSE_ZIGZAG_ORDER[i][0], col + REVERSE_ZIGZAG_ORDER[i][1]] = output_pixel
+#                 output_pixel_array[row + ORDER[i][0], col + ORDER[i][1]] = output_pixel
 #                 await RisingEdge(dut.CLK)
 
 #         print(f"Successfully processed Row #{row} to #{row + 4}")
