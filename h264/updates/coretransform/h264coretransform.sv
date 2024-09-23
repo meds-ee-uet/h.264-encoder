@@ -81,7 +81,6 @@ assign ynx = ynyx [1:0];
 
 // New Parameters
 
-logic input_1;  // Input for FSM-1
 logic en_pipeline1,en_pipeline2,en_pipeline3,en_pipeline4; // Pipeline enable signals
 logic en_pipeline5,en_pipeline6,en_pipeline7,en_pipeline8; // Pipeline enable signals
 logic [13:0] ynout_in;
@@ -95,14 +94,11 @@ assign en_pipeline1 = ENABLE;
 assign en_pipeline7 = valid1;
 assign en_pipeline8 = valid2;
 
-assign input_1 = (ixx != 0);            // Input for FSM-1
-
 // FSM-1 - Moore Machine with 8 states; S0,S1,S2,S3,S4,S5,S6,S7
 h264coretransform_controller controller(
                             .CLK(CLK),
                             .RESET(RESET),
                             .ENABLE(ENABLE),
-                            .input_1(input_1),
                             .en_pipeline2(en_pipeline2),
                             .en_pipeline3(en_pipeline3),
                             .en_pipeline4(en_pipeline4),
@@ -181,10 +177,10 @@ end
 always @(*)
 begin
     // --now compute row of FF matrix at TT+2 (12bit from 10bit)
-    ffx0_in = {xt0[9], xt0[9], xt0} + {xt1[9], xt1[9], xt1};	    //--xt0 + xt1
-    ffx1_in = {xt2[9], xt2[9], xt2} + {xt3[9], xt3, 1'b0};	 	//--xt2 + 2*xt3
-    ffx2_in = {xt0[9], xt0[9], xt0} - {xt1[9], xt1[9], xt1};	    //--xt0 - xt1
-    ffx3_in = {xt3[9], xt3[9], xt3} - {xt2[9], xt2, 1'b0};		//--xt3 - 2*xt2
+    ffx0_in = {xt0[9], xt0[9], xt0} + {xt1[9], xt1[9], xt1};	    //--xt0 + xt1   - ROWX,COL0
+    ffx1_in = {xt2[9], xt2[9], xt2} + {xt3[9], xt3, 1'b0};	 	    //--xt2 + 2*xt3 - ROWX,COL1
+    ffx2_in = {xt0[9], xt0[9], xt0} - {xt1[9], xt1[9], xt1};	    //--xt0 - xt1   - ROWX,COL2
+    ffx3_in = {xt3[9], xt3[9], xt3} - {xt2[9], xt2, 1'b0};		    //--xt3 - 2*xt2 - ROWX,COL3
 end
 // Pipeline Registers 2-5
 always_ff @(posedge CLK)
@@ -262,6 +258,7 @@ begin
     //assign ynx = ynyx [1:0]; -- Unconditionally assigned
 
     case(ynx)
+        // COL0 - From X.Ct
         2'd0:
         begin
             ff0pu = ff00;
@@ -269,7 +266,7 @@ begin
             ff2pu = ff20;
             ff3pu = ffx0;
         end
-
+        // COL1 - From X.Ct
         2'd1:
         begin
             ff0pu = ff01;
@@ -277,7 +274,7 @@ begin
             ff2pu = ff21;
             ff3pu = ffx1;
         end
-
+        // COL2 - From X.Ct
         2'd2:
         begin
             ff0pu = ff02;
@@ -285,7 +282,7 @@ begin
             ff2pu = ff22;
             ff3pu = ffx2;
         end
-
+        // COL3 - From X.Ct
         default:
         begin
             ff0pu = ff03;
@@ -372,26 +369,29 @@ begin
     // yny -> yny1 -> yny2 ('yny2' is 'yny' after delay of '2 clock cycles')
     if (yny2==0) 
     begin
-        ynout_in = {yt0[12], yt0} + {yt1[12], yt1};	//-- yt0 + yt1
+        ynout_in = {yt0[12], yt0} + {yt1[12], yt1};	    //-- yt0 + yt1
+        // ROWX,COL0 : [1 1 1 1]
     end
     else if (yny2==1) 
     begin
         ynout_in = {yt2[12], yt2} + {yt3, 1'b0};		//-- yt2 + 2*yt3
+        // ROWX,COL1 : [2 1 -1 -2]
     end
     else if (yny2==2) 
     begin
-        ynout_in = {yt0[12], yt0} - {yt1[12], yt1};    //-- yt0 - yt1
+        ynout_in = {yt0[12], yt0} - {yt1[12], yt1};     //-- yt0 - yt1
+        // ROWX,COL2 : [1 -1 -1 1]
     end	   
     else
     begin
         ynout_in = {yt3[12], yt3} - {yt2, 1'b0};	    //-- yt3 - 2*yt2
+        // ROWX,COL3 : [1 -2 2 -1]
     end 
 end
 // Pipeline # 08 (ENDING)
 always_ff @(posedge CLK)
 begin
     // OUTPUT "ynout_in"is computed at the end of always @(*) block
-
     if (en_pipeline8)
     begin
         YNOUT <= ynout_in;

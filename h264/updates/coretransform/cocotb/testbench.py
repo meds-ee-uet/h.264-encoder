@@ -2,6 +2,8 @@ import cocotb
 from cocotb.triggers import RisingEdge, Timer
 from PIL import Image
 import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 # Clock generation
 async def clock_gen(dut):
@@ -36,6 +38,39 @@ def create_image_from_pixels(pixel_array, image_size, filename):
     """
     img = Image.fromarray(np.array(pixel_array, dtype=np.uint8), mode='L')
     img.save(filename)
+
+def plot_3d_bar_pixel_array(input_pixels, output_pixels, image_size, filename):
+    fig = plt.figure(figsize=(12, 6))
+
+    # Prepare the grid for pixel positions
+    x = np.arange(image_size[1])
+    y = np.arange(image_size[0])
+    X, Y = np.meshgrid(x, y)
+
+    # Flatten the input and output arrays
+    input_pixels_flat = input_pixels.flatten()
+    output_pixels_flat = output_pixels.flatten()
+
+    # Create 3D bar plots for input pixel array
+    ax1 = fig.add_subplot(121, projection='3d')
+    ax1.bar3d(input_pixels_flat, Y.flatten(), np.zeros_like(input_pixels_flat), 1, 1, X.flatten(), shade=True)
+    ax1.set_title("Input Pixel Array (Bar Plot)")
+    ax1.set_xlabel("Pixel Value (X Axis)")
+    ax1.set_ylabel("Frequency (Y Axis)")
+    ax1.set_zlabel("Amplitude (Z Axis)")
+
+    # Create 3D bar plots for output pixel array
+    ax2 = fig.add_subplot(122, projection='3d')
+    ax2.bar3d(output_pixels_flat, Y.flatten(), np.zeros_like(output_pixels_flat), 1, 1, X.flatten(), shade=True)
+    ax2.set_title("Output Pixel Array (Bar Plot)")
+    ax2.set_xlabel("Pixel Value (X Axis)")
+    ax2.set_ylabel("Frequency (Y Axis)")
+    ax2.set_zlabel("Amplitude (Z Axis)")
+
+    # Save the plot as an image file
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
 
 @cocotb.test()
 async def test_core_transform(dut):
@@ -105,4 +140,7 @@ async def test_core_transform(dut):
     create_image_from_pixels(input_pixel_array, (width, height), '../images/input_image.png')
     create_image_from_pixels(output_pixel_array, (width, height), '../images/output_image.png')
 
-    print("Test completed. Images saved as 'input_image_from_xxin.png' and 'output_image_from_dut.png'")
+    # Create 3D bar plot of the input and output pixel arrays
+    plot_3d_bar_pixel_array(input_pixel_array, output_pixel_array, (height, width), '../images/pixel_array_3d_bar_plot.png')
+
+    print("Test completed. Images saved as 'input_image.png', 'output_image.png', and 'pixel_array_3d_bar_plot.png'")

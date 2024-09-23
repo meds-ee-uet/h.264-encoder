@@ -2,7 +2,6 @@ module h264coretransform_controller(
     input logic CLK,                    // Clock Signal
     input logic RESET,                  // Reset Signal to reset state machine
     input logic ENABLE,                 // Enable signal for state machine
-    input logic input_1,                // Input signal for FSM-1 // Pipeline 2-5
     output logic en_pipeline2,en_pipeline3,en_pipeline4,en_pipeline5
 );
 
