@@ -3,12 +3,12 @@
 
 module h264coretransform
 (
-    input logic CLK,	// fast io clock
+    input logic CLK,	            // fast io clock
     input logic RESET,
     output logic READY = '0,		//set when ready for ENABLE
     input logic ENABLE,				//values input only when this is 1
-    input logic [35:0] XXIN,	 //4 x 9bit, first px is lsbs
-    output logic VALID = '0,				//values output only when this is 1
+    input logic [35:0] XXIN,	    //4 x 9bit, first px is lsbs
+    output logic VALID = '0,	    //values output only when this is 1
     output logic [13:0] YNOUT = '0	//output (zigzag order)
 );
 

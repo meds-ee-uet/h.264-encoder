@@ -1,5 +1,5 @@
 import cocotb
-from cocotb.triggers import RisingEdge, Timer
+from cocotb.triggers import RisingEdge, Timer, FallingEdge
 from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
@@ -102,8 +102,8 @@ async def test_core_transform(dut):
                     else:
                         pixel_block.append(0)  # Use 0 for out-of-bound indices
 
-            # Send the pixel block to the DUT and store the input pixels
             for i in range(4):
+                # Pack 4 pixels into XXIN
                 xxin = (
                     (pixel_block[i*4+3] & 0xFF) << 27 |
                     (pixel_block[i*4+2] & 0xFF) << 18 |
@@ -115,14 +115,21 @@ async def test_core_transform(dut):
                 for idx in range(4):
                     input_pixel_array[row + i, col + idx] = pixel_block[i*4 + idx]
 
-                while not dut.READY.value:
-                    await RisingEdge(dut.CLK)
+                # Wait for READY signal before asserting ENABLE (only once before the loop)
+                if i == 0:
+                    while not dut.READY.value:
+                        await FallingEdge(dut.CLK)
 
+                # Assert ENABLE only once and keep it high for 4 cycles
                 dut.ENABLE.value = 1
-                dut.XXIN.value = xxin
+                dut.XXIN.value = xxin  # Update XXIN before the clock edge
+
+                # Wait for a rising clock edge to ensure the DUT captures the XXIN value
                 await RisingEdge(dut.CLK)
 
+            # After the 4th clock cycle, deassert ENABLE
             dut.ENABLE.value = 0
+
 
             # Read output pixels from DUT and store them
             while not dut.VALID.value:
