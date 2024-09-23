@@ -24,6 +24,7 @@ c & -b & b & -c
 $$
 
 Where:
+
 $$
 a = \frac{1}{2}
 $$
@@ -36,16 +37,35 @@ $$
 c = \sqrt{\frac{1}{2}} \cos{\frac{3\pi}{8}} = 0.2706 \ldots
 $$
 
+### Forming Cf Matrix
+
 Since core transform is scaled approximation of the DCT, multiplying each coefficient by 2.5 and rounding-off we get:
 
+<p align="center">Y = C.X.C<sup>T</sup></p>
+
+Here:
+
 $$
-a \times 2.5 \approx \frac{1}{2} \times 2.5 = 1.25
+a \times 2.5 \approx \frac{1}{2} \times 2.5 = 1.25 \approx 1
 $$
 
 $$
-b \times 2.5 \approx \sqrt{\frac{1}{2}} \cos{\frac{\pi}{8}} \times 2.5 \approx 0.6532 \times 2.5 = 1.633
+b \times 2.5 \approx \sqrt{\frac{1}{2}} \cos{\frac{\pi}{8}} \times 2.5 = 0.6532 \times 2.5 = 1.633 \approx 2
 $$
 
 $$
-c \times 2.5 \approx \sqrt{\frac{1}{2}} \cos{\frac{3\pi}{8}} \times 2.5 \approx 0.2706 \times 2.5 = 0.6765
+c \times 2.5 \approx \sqrt{\frac{1}{2}} \cos{\frac{3\pi}{8}} \times 2.5 = 0.2706 \times 2.5 = 0.6765 \approx 1
 $$
+
+Thus, the transform matrix becomes
+
+$$
+C = \begin{bmatrix}
+1 & 1 & 1 & 1 \\
+2 & 1 & -1 & -2 \\
+1 & -1 & -1 & 1 \\
+1 & -2 & 2 & -1
+\end{bmatrix}
+$$
+
+This approximation is chosen as a trade-off between computational simplicity and compression performance.
