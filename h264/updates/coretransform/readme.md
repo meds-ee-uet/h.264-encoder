@@ -1,3 +1,5 @@
+# H.264 Core Transform
+
 ## Literature Review
 H.264 Core Transform is a scaled approximation of the 4x4 Discrete Cosine Transform (DCT) termed as a 4x4 Integer Transform.
 
@@ -14,9 +16,36 @@ The transform matrix **A** is defined as:
 
 $$
 A = \begin{bmatrix}
-a & b & c & d \\
-e & f & g & h \\
-i & j & k & l \\
-m & n & o & p
+a & a & a & a \\
+b & c & -c & -b \\
+a & -a & -a & a \\
+c & -b & b & -c
 \end{bmatrix}
+$$
+
+Where:
+$$
+a = \frac{1}{2}
+$$
+
+$$
+b = \sqrt{\frac{1}{2}} \cos{\frac{\pi}{8}} = 0.6532 \ldots
+$$
+
+$$
+c = \sqrt{\frac{1}{2}} \cos{\frac{3\pi}{8}} = 0.2706 \ldots
+$$
+
+Since core transform is scaled approximation of the DCT, multiplying each coefficient by 2.5 and rounding-off we get:
+
+$$
+a \times 2.5 \approx \frac{1}{2} \times 2.5 = 1.25
+$$
+
+$$
+b \times 2.5 \approx \sqrt{\frac{1}{2}} \cos{\frac{\pi}{8}} \times 2.5 \approx 0.6532 \times 2.5 = 1.633
+$$
+
+$$
+c \times 2.5 \approx \sqrt{\frac{1}{2}} \cos{\frac{3\pi}{8}} \times 2.5 \approx 0.2706 \times 2.5 = 0.6765
 $$
