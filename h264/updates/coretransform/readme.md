@@ -13,5 +13,5 @@ A -> 4x4 transform matrix
 
 
 ```math
-A = \begin{bmatrix}a\\b\\a\\c\a\\c\\-a\\-b\a\\-c\\-a\\b\a\\-b\\a\\-c\end{bmatrix}
+A = \begin{bmatrix}a,b\\b,c\\c,d\end{bmatrix}
 ``` 
