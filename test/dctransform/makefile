@@ -1,11 +1,11 @@
 # design under test
-DUT = h264topsim
-RTL_DIR := rtl
+DUT = h264_dctransform_tb
+RTL_DIR := 
 # dut parameters
-ifeq ($(DUT), h264topsim)
+ifeq ($(DUT), h264_dctransform_tb)
 	SRCS := \
-		$(RTL_DIR)/*/*.sv	\
-    	$(RTL_DIR)/*.sv	
+		$(RTL_DIR)*.sv	\
+    	$(RTL_DIR)../../rtl/dctransform/*.sv	
     		
 endif
 
