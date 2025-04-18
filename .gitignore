@@ -83,3 +83,5 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+*.264

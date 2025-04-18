@@ -40,9 +40,13 @@ top_vsim    ?= tb
 max_cycles ?= 100000000000
 vcd        ?= 0
 
-src := 	bench/*.sv							\
-		$(wildcard $(RTL_DIR)/*.sv) 		\
-       	$(wildcard $(RTL_DIR)/*/*.sv)
+src := 	bench/*.sv									\
+		$(wildcard $(RTL_DIR)/*.sv) 				\
+       	$(wildcard $(RTL_DIR)/coretransform/*.sv)	\
+       	$(wildcard $(RTL_DIR)/dctransform/*.sv)		\
+       	$(wildcard $(RTL_DIR)/intra4x4/*.sv)		\
+       	$(wildcard $(RTL_DIR)/intra8x8/*.sv)		\
+       	$(wildcard $(RTL_DIR)/inter_prediction/*.sv)		
 
 
 #=======================================================================================================
