@@ -16,8 +16,8 @@ module tb_me #
 
     initial
     begin
-        $readmemh("../../memory/curr_picture.mem", curr_picture);
-        $readmemh("../../memory/search_picture.mem", search_picture);
+        $readmemh("../memory/curr_picture.mem", curr_picture);
+        $readmemh("../memory/search_picture.mem", search_picture);
     end
 
     // Initializing Block Rams

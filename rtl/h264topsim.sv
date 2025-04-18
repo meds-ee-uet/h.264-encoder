@@ -251,7 +251,7 @@ module h264topsim();
     h264coretransform coretransform
     (
         .CLK(clk2), 
-        .RESET(top_NEWSLICE)
+        .RESET(top_NEWSLICE),
         .READY(coretransform_READY), 
         .ENABLE(coretransform_ENABLE),
         .XXIN(coretransform_XXIN), 
@@ -270,7 +270,7 @@ module h264topsim();
     )
     dctransform
     (
-        .CLK2(clk2), 
+        .CLK(clk2), 
         .RESET(top_NEWSLICE),
         .READYI(nop3),
         .ENABLE(intra8x8cc_DCSTROBEO),
@@ -299,7 +299,7 @@ module h264topsim();
 
     h264dctransform invdctransform
     (
-        .CLK2(clk2), 
+        .CLK(clk2), 
         .RESET(top_NEWSLICE), 
         .READYI(nop4),
         .ENABLE(invdctransform_ENABLE),
