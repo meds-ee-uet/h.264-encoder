@@ -1,13 +1,13 @@
 module h264tobytes 
 (
-    input logic CLK,
-    input logic VALID,
-    output logic READY = 1'b1,
-    input logic [24:0] VE = 25'd0,
-    input logic [4:0] VL = 5'd0,
-    output logic [7:0] BYTE = 8'd0,
-    output logic STROBE = 1'b0,
-    output logic DONE = 1'b0 
+    input logic 		CLK     ,
+    input logic 		VALID   ,
+    output logic 		READY   ,
+    input logic [24:0] 	VE      ,
+    input logic [4:0] 	VL      ,
+    output logic [7:0] 	BYTE    ,
+    output logic 		STROBE  ,
+    output logic 		DONE
 );
 
     logic [24:0] aVE [63:0];

@@ -11,18 +11,18 @@ module h264topskeleton #
 	input logic         NEWSLICE,       
 	input logic         NEWLINE,     
 	input logic  [5:0]  qp,
-	output logic        xbuffer_DONE       = '0, 
+	output logic        xbuffer_DONE       , 
 
-	output logic        intra4x4_READYI    = '0,   
-	input  logic        intra4x4_STROBEI   = '0,
-	input  logic [31:0] intra4x4_DATAI     = '0,
-	output logic        intra8x8cc_READYI  = '0,   
-	input  logic        intra8x8cc_STROBEI = '0,
-	input  logic [31:0] intra8x8cc_DATAI   = '0,
+	output logic        intra4x4_READYI    ,   
+	input  logic        intra4x4_STROBEI   ,
+	input  logic [31:0] intra4x4_DATAI     ,
+	output logic        intra8x8cc_READYI  ,   
+	input  logic        intra8x8cc_STROBEI ,
+	input  logic [31:0] intra8x8cc_DATAI   ,
 
-	output logic [7:0]  tobytes_BYTE       = '0,
-	output logic        tobytes_STROBE     = '0, 
-	output logic        tobytes_DONE       = '0    
+	output logic [7:0]  tobytes_BYTE       ,
+	output logic        tobytes_STROBE     , 
+	output logic        tobytes_DONE           
 );
 
 	bit [31:0] intra4x4_TOPI         ;

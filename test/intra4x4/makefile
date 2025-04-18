@@ -12,7 +12,7 @@ all: compile sim
 simulation: compile wave
 
 compile:
-	vlog $(SRC_DIR)/*.sv
+	vlog $(SRCS)
 
 sim:
 	vsim -c -voptargs=+acc $(DUT) -do "run -all"

@@ -1,16 +1,16 @@
 module h264cavlc 
 (
-    input logic CLK, CLK2, ENABLE,
-	input logic  SIN = 1'b0,
-    input logic [11:0] VIN,
-    input logic [4:0] NIN,
-    output logic READY,
-	output logic VS = 1'b0,
-	output logic VALID = 1'b0,
-    output logic [24:0] VE = 25'd0,
-    output logic [4:0] VL = 5'd0,
-	output logic [4:0] NOUT = 5'd0,
-    output logic [2:0] XSTATE
+    input logic 		CLK, CLK2, ENABLE,
+	input logic  		SIN 	,
+    input logic [11:0] 	VIN		,
+    input logic [4:0] 	NIN		,
+    output logic 		READY	,
+	output logic 		VS      ,
+	output logic 		VALID   ,
+    output logic [24:0] VE      ,
+    output logic [4:0] 	VL      ,
+	output logic [4:0] 	NOUT    ,
+    output logic [2:0] 	XSTATE
 );
 
 	// information collected from input when ENABLE=1

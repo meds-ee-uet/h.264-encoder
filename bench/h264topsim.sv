@@ -1,4 +1,4 @@
-module h264topsim();
+module h264topsim(input bit clk2);
 
     localparam IMGWIDTH     = 352;
     localparam IMGHEIGHT    = 288;
@@ -25,7 +25,7 @@ module h264topsim();
 	
 	// Signals
 
-    logic clk = 0, clk2;
+    logic clk = 0;//clk2;
 
     logic [5:0] qp = INITQP;
 
@@ -507,18 +507,17 @@ module h264topsim();
     assign cavlc_NIN = xbuffer_NV==1 ? ninl : xbuffer_NV==2 ? nint : xbuffer_NV==3 ? ninsum[5:1] : '0;
 	assign ninsum = {1'b0, ninl} + {1'b0, nint} + 1;
 
-    initial
-    begin
-        forever 
+    // initial
+    // begin
+    //     forever 
+    //     begin
+        always_ff @(posedge clk2 ) 
         begin
-            clk2 = 0;
-            #5;
-            clk2 = 1;
-            clk = ~clk;
-            #5;
+            clk <= ~clk;
         end
+    //     end
        
-    end
+    // end
 
     initial
     begin

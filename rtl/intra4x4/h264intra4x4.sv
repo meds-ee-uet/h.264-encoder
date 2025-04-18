@@ -1,29 +1,29 @@
 module h264intra4x4 
 (
-   input logic CLK,                    // pixel clock
-   input logic NEWSLICE,               // indication this is the first in a slice
-   input logic NEWLINE,                // indication this is the first on a line
-   input logic STROBEI,                // data here
-   input logic [31:0] DATAI,
-   output logic READYI,
+   input logic          CLK         ,        // pixel clock
+   input logic          NEWSLICE    ,        // indication this is the first in a slice
+   input logic          NEWLINE     ,        // indication this is the first on a line
+   input logic          STROBEI     ,        // data here
+   input logic [31:0]   DATAI       ,
+   output logic         READYI      ,
    //  top interface:
-   input logic [31:0] TOPI,            // top pixels (to predict against)
-   input logic [3:0] TOPMI,            // top block's mode (for P/RMODEO)
-   output logic [1:0] XXO = 2'b00,     // which macroblock X
-   output logic XXINC = 1'b0,          // when to increment XX macroblock
+   input logic [31:0]   TOPI        ,        // top pixels (to predict against)
+   input logic [3:0]    TOPMI       ,        // top block's mode (for P/RMODEO)
+   output logic [1:0]   XXO         ,        // which macroblock X
+   output logic         XXINC       ,        // when to increment XX macroblock
    //  feedback interface:
-   input logic [7:0] FEEDBI,           // feedback for pixcol
-   input logic FBSTROBE,               // feedback valid
+   input logic [7:0]    FEEDBI      ,        // feedback for pixcol
+   input logic          FBSTROBE    ,        // feedback valid
    //  out interface:
-   output logic STROBEO = 1'b0,        // data here
-   output logic [35:0] DATAO = 36'd0,
-   output logic [31:0] BASEO = 32'd0,  // base for reconstruct
-   input  logic READYO = 1'b1,
-   output logic MSTROBEO = 1'b0,       // modeo here
-   output logic [3:0] MODEO = 4'd0,    // 0..8 prediction type
-   output logic PMODEO = 1'b0,         // prev_i4x4_pred_mode_flag
-   output logic [2:0] RMODEO = 3'd0,   // rem_i4x4_pred_mode_flag
-   output logic CHREADY = 1'b0         // ready line to chroma
+   output logic         STROBEO      ,        // data here
+   output logic [35:0]  DATAO       ,
+   output logic [31:0]  BASEO       ,        // base for reconstruct
+   input  logic         READYO      ,
+   output logic         MSTROBEO    ,        // modeo here
+   output logic [3:0]   MODEO       ,        // 0..8 prediction type
+   output logic         PMODEO      ,        // prev_i4x4_pred_mode_flag
+   output logic [2:0]   RMODEO      ,        // rem_i4x4_pred_mode_flag
+   output logic         CHREADY              // ready line to chroma
 );
 
 //logic [31:0] counter = '0; 
