@@ -1,7 +1,7 @@
 module me #
 (
-    parameter MACRO_DIM  = 16,
-    parameter SEARCH_DIM = 48
+    parameter MACRO_DIM  = 4,
+    parameter SEARCH_DIM = 16
 ) 
 (
     input  logic        rst_n,
