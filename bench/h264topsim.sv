@@ -27,6 +27,9 @@ module h264topsim(input bit clk2);
 
     integer framenum = 0;
     integer x, y, cx, cy, cuv, i, j, w, count;
+    // Variables to track macroblock and search block positions
+    integer mb_x, mb_y; // Current macroblock position (top-left corner)
+    integer search_block_addr; // Absolute address of the search block in the buffer
     reg [IMGBITS-1:0] c;
 	
 	// Signals
@@ -39,9 +42,13 @@ module h264topsim(input bit clk2);
     logic [IMGBITS-1:0] uvideo [0:IMGWIDTH/2-1][0:IMGHEIGHT/2-1];
     logic [IMGBITS-1:0] vvideo [0:IMGWIDTH/2-1][0:IMGHEIGHT/2-1];
 
-    logic [IMGBITS-1:0] yrvideo [0:IMGWIDTH-1  ][0:IMGHEIGHT-1  ];
-    logic [IMGBITS-1:0] urvideo [0:IMGWIDTH/2-1][0:IMGHEIGHT/2-1];
-    logic [IMGBITS-1:0] vrvideo [0:IMGWIDTH/2-1][0:IMGHEIGHT/2-1];
+    logic [IMGBITS-1:0] yrvideo_curr [0:IMGWIDTH-1  ][0:IMGHEIGHT-1  ];
+    logic [IMGBITS-1:0] urvideo_curr [0:IMGWIDTH/2-1][0:IMGHEIGHT/2-1];
+    logic [IMGBITS-1:0] vrvideo_curr [0:IMGWIDTH/2-1][0:IMGHEIGHT/2-1];
+
+    logic [IMGBITS-1:0] yrvideo_ref [0:IMGWIDTH-1  ][0:IMGHEIGHT-1  ];
+    logic [IMGBITS-1:0] urvideo_ref [0:IMGWIDTH/2-1][0:IMGHEIGHT/2-1];
+    logic [IMGBITS-1:0] vrvideo_ref [0:IMGWIDTH/2-1][0:IMGHEIGHT/2-1];
 
     // Intra4x4 Wires
     logic top_NEWSLICE = 1'b1;			      
@@ -244,23 +251,145 @@ module h264topsim(input bit clk2);
 
     assign intra8x8cc_TOPI = toppixcc[{mbxcc, intra8x8cc_XXO}];
 
+
+    // Inter-Prediction
+    localparam MACRO_DIM  = 16;
+    localparam SEARCH_DIM = 48;
+    localparam PORT_WIDTH = MACRO_DIM + 1;
+
+    logic        rst_n;
+    //logic        clk;
+    logic        start;
+    logic        en_ram;
+    logic        done;
+    logic [5:0]  addr;
+    logic [5:0]  amt;
+    logic [5:0]  mv_y;
+    logic [5:0]  mv_x;
+    logic [7:0]  pixel_spr_in [0:MACRO_DIM];
+    logic [7:0]  pixel_cpr_in [0:MACRO_DIM-1];
+    logic [15:0] min_sad;
+
+    logic [15:0] trans_addr [MACRO_DIM:0];
+
+    me # 
+    (
+        .MACRO_DIM  ( MACRO_DIM  ),
+        .SEARCH_DIM ( SEARCH_DIM )
+    )
+    ins_me
+    (
+        .rst_n              ( rst_n              ),
+        .clk                ( clk2               ),
+        .start              ( start              ),
+        .pixel_spr_in       ( pixel_spr_in       ),
+        .pixel_cpr_in       ( pixel_cpr_in       ),
+        .ready              ( ready              ),
+        .valid              ( valid              ),
+        .en_ram             ( en_ram             ),
+        .done               ( done               ),
+        .addr               ( addr               ),
+        .amt                ( amt                ),
+        .mv_x               ( mv_x               ),
+        .mv_y               ( mv_y               ),
+        .min_sad            ( min_sad            )
+    );
+
+    mc #
+    (
+        .MB_SIZE            (4),
+        .PIXEL_WIDTH        (IMGBITS),
+        .REF_FRAME_SIZE     (4),
+    )
+    ins_mc_luma
+    (
+        // .mv_x               (),
+        // .mv_y               (),
+        .ref_frame          (),
+        .curr_mb            (),
+        .src_ready          (inter_mc_READY_L),
+        .src_valid          (inter_mc_VALID_L),
+        .dst_ready          (),
+        .dst_valid          (),
+        .residual           (),
+    );
+
+    mc #
+    (
+        .MB_SIZE            (2),
+        .PIXEL_WIDTH        (IMGBITS),
+        .REF_FRAME_SIZE     (2),
+    )
+    ins_mc_chroma
+    (
+        // .mv_x               (),
+        // .mv_y               (),
+        .ref_frame          (),
+        .curr_mb            (),
+        .src_ready          (inter_mc_READY_C),
+        .src_valid          (inter_mc_VALID_C),
+        .dst_ready          (),
+        .dst_valid          (),
+        .residual           (),
+    );
+
+    // --- ADD LOGIC FOR MINTRA SINTRA AND IF NOT, THEN PMODE IS THE FINAL ONE
+
+    logic inter_flag_valid;
+    // logic inter_flag_reset;
+    logic inter_flag;
+    logic [11:0] inter_mvx;
+    logic [11:0] inter_mvy;
+
+    logic header_LSTROBE;
+    logic header_CSTROBE;
+    logic header_SINTRA;
+    logic header_MINTRA;
+    logic [11:0] header_MVDX;
+    logic [11:0] header_MVDY;
+
+    logic [7:0] search_block_reg[0:SEARCH_DIM-1][0:SEARCH_DIM-1];
+
+    always_ff @(posedge clk)
+        begin
+            if (valid)
+                begin
+                    inter_flag_valid <= 1;
+                    inter_flag <= (min_sad <= 1000);
+                    inter_mvx  <= mv_x;
+                    inter_mvy  <= mv_y;
+                end
+        end
+
+    always_comb
+        begin
+            if (inter_flag_valid)
+                begin
+                    header_SINTRA = (inter_flag) ? 1'0 : 1'b1;
+                    header_MINTRA = (inter_flag) ? 1'0 : 1'b1;
+                end
+        end
+
+    assign header_MVDX = inter_mvx - MACRO_DIM;
+    assign header_MVDY = inter_mvy - MACRO_DIM;
+
     h264header header
     (
 		.CLK(clk),
 		.NEWSLICE(top_NEWSLICE),
         .LASTSLICE(1'b0), //Not Used
-		.SINTRA(1'b1),	
-		.MINTRA(1'b1) ,
-		.LSTROBE(intra4x4_STROBEO),
-		.CSTROBE(intra4x4_STROBEO),
+		.SINTRA(header_SINTRA),	
+		.MINTRA(header_MINTRA),
+		.LSTROBE(header_LSTROBE), // Was intra4x4_STROBEO
+		.CSTROBE(header_CSTROBE), // Was intra4x4_STROBEO
 		.QP(qp),
 		.PMODE(intra4x4_PMODEO),
 		.RMODE(intra4x4_RMODEO),
 		.CMODE(header_CMODE),
-		.PTYPE(2'b00),
-		.PSUBTYPE(2'b00),
-		.MVDX(12'h000),
-		.MVDY(12'h000),
+		.PTYPE(2'b00),      // P_16x16 = 0
+		.PSUBTYPE(2'b00),   // Not required for P_16x16
+		.MVDX(header_MVDX),
+		.MVDY(header_MVDY),
 		.VE(header_VE),
 		.VL(header_VL),
 		.VALID(header_VALID)
@@ -425,56 +554,6 @@ module h264topsim(input bit clk2);
         .DONE(tobytes_DONE)
     );
 
-    // // Inter-Prediction
-    // localparam MACRO_DIM  = 16;
-    // localparam SEARCH_DIM = 48;
-    // localparam PORT_WIDTH = MACRO_DIM + 1;
-
-    // logic        rst_n;
-    // //logic        clk;
-    // logic        start;
-    // logic        en_ram;
-    // logic        done;
-    // logic [5:0]  addr;
-    // logic [5:0]  amt;
-    // logic [5:0]  mv_y;
-    // logic [5:0]  mv_x;
-    // logic [7:0]  pixel_spr_in [0:MACRO_DIM];
-    // logic [7:0]  pixel_cpr_in [0:MACRO_DIM-1];
-    // logic [15:0] min_sad;
-
-    // logic [15:0] trans_addr [MACRO_DIM:0];
-
-    // me # 
-    // (
-    //     .MACRO_DIM  ( MACRO_DIM  ),
-    //     .SEARCH_DIM ( SEARCH_DIM )
-    // )
-    // ins_me
-    // (
-    //     .rst_n              ( rst_n              ),
-    //     .clk                ( clk2               ),
-    //     .start              ( start              ),
-    //     .pixel_spr_in       ( pixel_spr_in       ),
-    //     .pixel_cpr_in       ( pixel_cpr_in       ),
-    //     .ready              ( ready              ),
-    //     .valid              ( valid              ),
-    //     .en_ram             ( en_ram             ),
-    //     .done               ( done               ),
-    //     .addr               ( addr               ),
-    //     .amt                ( amt                ),
-    //     .mv_x               ( mv_x               ),
-    //     .mv_y               ( mv_y               ),
-    //     .min_sad            ( min_sad            )
-    // );
-
-    always_ff @(posedge clk) begin
-        if(top_NEWSLICE)
-            count_fram <= count_fram + 1;
-        else
-            count_fram <= count_fram; 
-    end
-
    	assign tobytes_VE = header_VALID ? {5'b00000, header_VE} : cavlc_VALID ? cavlc_VE : {1'b0, 24'h030080};
 	assign tobytes_VL = header_VALID ? header_VL : cavlc_VALID ? cavlc_VL : 5'b01000;
 	assign tobytes_VALID = header_VALID | align_VALID | cavlc_VALID;
@@ -586,6 +665,19 @@ module h264topsim(input bit clk2);
                 end
             end
 
+            for (y_copy = 0; y_copy < IMGHEIGHT; y_copy++) begin
+                for (x_copy = 0; x_copy < IMGWIDTH; x_copy++) begin
+                    yrvideo_ref[x_copy][y_copy] = yrvideo_curr[x_copy][y_copy];
+                end
+            end
+
+            for (y_copy = 0; y_copy < IMGHEIGHT/2; y_copy++) begin
+                for (x_copy = 0; x_copy < IMGWIDTH/2; x_copy++) begin
+                    urvideo_ref[x_copy][y_copy] <= urvideo_curr[x_copy][y_copy];
+                    vrvideo_ref[x_copy][y_copy] <= vrvideo_curr[x_copy][y_copy];
+                end
+            end
+
             @(posedge clk2);
 
             framenum++;
@@ -611,33 +703,61 @@ module h264topsim(input bit clk2);
                     cy = cy - (cy % 8);
                     cuv = 0;
                 end
-                if ((intra4x4_READYI) && (y < IMGHEIGHT))
+                if ((intra4x4_READYI || INTER_CURR_READY_L) && (y < IMGHEIGHT) && inter_flag_valid)
                 begin
-
                     @(posedge clk2);
 
-                    intra4x4_STROBEI = 1;
                     top_NEWLINE = 0;
                     top_NEWSLICE = 0;
 
-                    for (i = 0; i <= 1; i++)
+                    if (inter_flag == 0) 
                     begin
-                        for (j = 0; j <= 3; j++)
+                        // INTRA mode selected
+                        intra4x4_STROBEI = 1;
+
+                        for (i = 0; i <= 1; i++)
                         begin
-                            intra4x4_DATAI = 
-                            {
-                                yvideo[x+3][y], 
-                                yvideo[x+2][y], 
-                                yvideo[x+1][y], 
-                                yvideo[x][y]
-                            };
-                            @(posedge clk2);
-                            x = x + 4;
+                            for (j = 0; j <= 3; j++)
+                            begin
+                                intra4x4_DATAI = {
+                                    yvideo[x+3][y], 
+                                    yvideo[x+2][y], 
+                                    yvideo[x+1][y], 
+                                    yvideo[x][y]
+                                };
+                                @(posedge clk2);
+                                x = x + 4;
+                            end
+                            x = x - 16;	
+                            y = y + 1;
                         end
-                        x = x - 16;	
-                        y = y + 1;
+                        intra4x4_STROBEI = 0;
+                    end 
+                    else 
+                    begin
+                        // INTER mode selected
+                        inter_CURR_VALID_L = 1;
+
+                        for (i = 0; i <= 1; i++)
+                        begin
+                            for (j = 0; j <= 3; j++)
+                            begin
+                                curr_mb_luma = {
+                                    yvideo[x+3][y], 
+                                    yvideo[x+2][y], 
+                                    yvideo[x+1][y], 
+                                    yvideo[x][y]
+                                };
+                                @(posedge clk2);
+                                x = x + 4;
+                            end
+                            x = x - 16;	
+                            y = y + 1;
+                        end
+                        inter_CURR_VALID_L = 0;
                     end
-                    intra4x4_STROBEI = 0;
+
+                    // Advance block position after processing
                     if ((y % 16) == 0)
                     begin
                         x = x + 16;
@@ -647,109 +767,201 @@ module h264topsim(input bit clk2);
                             x = 0;			
                             y = y + 16;
                             if (xbuffer_DONE == 0)
-                            begin
                                 wait (xbuffer_DONE == 1);
-                            end
                             top_NEWLINE = 1;
                             $display("Newline pulsed Line: %2d Progress: %2d%%", y, y*100/IMGHEIGHT);
                         end
                     end
                 end
 
-                if ((intra8x8cc_READYI == 1) && (cy < IMGHEIGHT/2))
-                begin
-                    @(posedge clk2);
-                    intra8x8cc_STROBEI = 1;
-                    for (j = 0; j <= 3; j++)
+                if ((intra8x8cc_READYI || inter_CURR_READY_C) && (cy < IMGHEIGHT/2) && inter_flag_valid)
                     begin
-                        for (i = 0; i <= 1; i++)
+                        @(posedge clk2);
+
+                        if (inter_flag == 0) 
                         begin
-                            if (cuv == 0)
+                            // INTRA mode selected
+                            intra8x8cc_STROBEI = 1;
+
+                            for (j = 0; j <= 3; j++)
+                                begin
+                                    for (i = 0; i <= 1; i++)
+                                    begin
+                                        if (cuv == 0)
+                                        begin
+                                            intra8x8cc_DATAI = {
+                                                uvideo[cx+i*4+3][cy], 
+                                                uvideo[cx+i*4+2][cy], 
+                                                uvideo[cx+i*4+1][cy], 
+                                                uvideo[cx+i*4][cy]
+                                            };
+                                        end
+                                        else
+                                        begin
+                                            intra8x8cc_DATAI = {
+                                                vvideo[cx+i*4+3][cy], 
+                                                vvideo[cx+i*4+2][cy], 
+                                                vvideo[cx+i*4+1][cy], 
+                                                vvideo[cx+i*4][cy]
+                                            };
+                                        end
+                                        @(posedge clk2);
+                                    end
+                                    cy = cy + 1;
+                                end
+                            intra8x8cc_STROBEI = 0;
+                        end
+                        else 
+                        begin
+                            // INTER mode selected
+                            inter_CURR_VALID_C = 1;
+
+                            for (j = 0; j <= 3; j++)
+                                begin
+                                    for (i = 0; i <= 1; i++)
+                                    begin
+                                        if (cuv == 0)
+                                        begin
+                                            curr_mb_chroma = {
+                                                uvideo[cx+i*4+3][cy], 
+                                                uvideo[cx+i*4+2][cy], 
+                                                uvideo[cx+i*4+1][cy], 
+                                                uvideo[cx+i*4][cy]
+                                            };
+                                        end
+                                        else
+                                        begin
+                                            curr_mb_chroma = {
+                                                vvideo[cx+i*4+3][cy], 
+                                                vvideo[cx+i*4+2][cy], 
+                                                vvideo[cx+i*4+1][cy], 
+                                                vvideo[cx+i*4][cy]
+                                            };
+                                        end
+                                        @(posedge clk2);
+                                    end
+                                    cy = cy + 1;
+                                end
+                                
+                            inter_CURR_VALID_C = 0;
+                        end
+                        if ((cy % 8) == 0) 
+                        begin
+                            if (cuv == 0) 
                             begin
-                                intra8x8cc_DATAI = 
-                                {
-                                    uvideo[cx+i*4+3][cy], 
-                                    uvideo[cx+i*4+2][cy], 
-                                    uvideo[cx+i*4+1][cy], 
-                                    uvideo[cx+i*4][cy]
-                                };
+                                cy = cy-8;
+                                cuv = 1;
                             end
                             else
                             begin
-                                intra8x8cc_DATAI = 
-                                {
-                                    vvideo[cx+i*4+3][cy], 
-                                    vvideo[cx+i*4+2][cy], 
-                                    vvideo[cx+i*4+1][cy], 
-                                    vvideo[cx+i*4][cy]
-                                };
+                                cuv = 0;
+                                cy = cy - 8;
+                                cx = cx + 8;
+                                if (cx == IMGWIDTH/2)
+                                begin
+                                    cx = 0;	
+                                    cy = cy + 8;
+                                end
                             end
-                            @(posedge clk2);
                         end
-                        cy = cy + 1;
                     end
-                    intra8x8cc_STROBEI = 0;
-                    if ((cy % 8) == 0) 
+                
+                // Update macroblock position and search block address after inter-prediction completes
+                always_ff @(posedge clk2) 
                     begin
-                        if (cuv == 0) 
-                        begin
-                            cy = cy-8;
-                            cuv = 1;
-                        end
-                        else
-                        begin
-                            cuv = 0;
-                            cy = cy - 8;
-                            cx = cx + 8;
-                            if (cx == IMGWIDTH/2)
-                            begin
-                                cx = 0;	
-                                cy = cy + 8;
+                        if (ready == 1 && !inter_flag_valid) begin
+                            // Calculate the absolute address of the search block in yrvideo_curr
+                            search_block_addr <= (mb_y - SEARCH_DIM / 2) * IMGWIDTH + (mb_x - SEARCH_DIM / 2);
+                    
+                            // Ensure the search block stays within bounds using zero-padding
+                            if (mb_x - SEARCH_DIM / 2 < 0 || mb_y - SEARCH_DIM / 2 < 0 ||
+                                mb_x + SEARCH_DIM / 2 >= IMGWIDTH || mb_y + SEARCH_DIM / 2 >= IMGHEIGHT) begin
+                                $display("Zero-padding applied for macroblock at (%d, %d)", mb_x, mb_y);
+                            end
+                    
+                            // Update macroblock position for the next iteration
+                            mb_x <= mb_x + 16; // Move to the next macroblock in the row
+                            if (mb_x + 16 >= IMGWIDTH) begin
+                                mb_x <= 0; // Reset to the first column
+                                mb_y <= mb_y + 16; // Move to the next row
                             end
                         end
                     end
-                end
+                
+                // Inter-Prediction Logic
+                if (ready == 1 && !inter_flag_valid) 
+                    begin
+                        integer l, f;
+                    
+                        // Load macroblock data into pixel_cpr_in
+                        for (l = 0; l < MACRO_DIM; l++) 
+                            begin
+                                if (en_ram) 
+                                    begin
+                                        pixel_cpr_in[l] = yvideo[l + x][addr + y];
+                                    end
+                            end
+                    
+                        // Load the search block data into pixel_spr_in and simultaneously store it in search_block_reg with zero-padding
+                        for (l = 0; l < PORT_WIDTH; l++) 
+                            begin
+                                if (en_ram) 
+                                    begin
+                                        integer x_idx, y_idx;
+                                        x_idx = (search_block_addr % IMGWIDTH) + l + amt; // Calculate x-coordinate
+                                        y_idx = (search_block_addr / IMGWIDTH);          // Calculate y-coordinate
+
+                                        // Apply zero-padding for out-of-bounds indices
+                                        if (x_idx < 0 || x_idx >= IMGWIDTH || y_idx < 0 || y_idx >= IMGHEIGHT) 
+                                            begin
+                                                pixel_spr_in[l] = 0; // Zero-pad out-of-bounds pixels
+                                            end 
+                                        else 
+                                            begin
+                                                pixel_spr_in[l] = yrvideo_curr[x_idx][y_idx]; // Load pixel into pixel_spr_in
+                                            end
+
+                                        // Store the corresponding pixel in search_block_reg
+                                        integer row, col;
+                                        row = l / SEARCH_DIM; // Calculate the row index
+                                        col = l % SEARCH_DIM; // Calculate the column index
+
+                                        if (x_idx < 0 || x_idx >= IMGWIDTH || y_idx < 0 || y_idx >= IMGHEIGHT) 
+                                            begin
+                                                search_block_reg[row][col] = 0; // Zero-pad out-of-bounds pixels
+                                            end 
+                                        else 
+                                            begin
+                                                search_block_reg[row][col] = yrvideo_curr[x_idx][y_idx]; // Store pixel in search_block_reg
+                                            end
+                                    end
+                            end
+                    
+                        // Update trans_addr based on amt
+                        for (f = 0; f < PORT_WIDTH; f++) 
+                            begin
+                                if (f < amt) 
+                                    begin
+                                        trans_addr[f] = search_block_addr + SEARCH_DIM;
+                                    end 
+                                else 
+                                    begin
+                                        trans_addr[f] = search_block_addr;
+                                    end
+                            end
+                    
+                        @(posedge clk2);
+                        start = 1;
+                    end
+                else
+                    begin
+                        start = 0;
+                    end
                 @(posedge clk2);
-            end  
-            // // Inter-Prediction
-            // if (ready == 1)
-            // begin
-            //     //start = 0;
-            //     integer l, f;
-            //     for(l = 0; l < MACRO_DIM; l++)
-            //     begin
-            //         if (en_ram)
-            //         begin
-            //             // pixel_cpr_in[l] = yvideo[l][addr];
-            //         end
-            //     end
-            //     for(l = 0; l < PORT_WIDTH; l++)
-            //     begin
-            //         if (en_ram)   
-            //         begin         
-            //         //    pixel_spr_in[l] = yrvideo[(l+amt)%PORT_WIDTH][trans_addr[(l+amt)%PORT_WIDTH]]; 
-            //         end
-            //     end
-            //     for (f = 0; f < PORT_WIDTH; f++) 
-            //     begin
-            //         if (f < amt) 
-            //         begin
-            //             trans_addr[f] = addr + SEARCH_DIM;
-            //         end
-            //         else
-            //         begin
-            //             trans_addr[f] = addr;
-            //         end
-            //     end
-            //     @(posedge clk2);
-            //     start = 1;
-            // end
-            if (count_fram == 1)
-                $display("Done push of data from intra4x4 and intra8x8cc");
-            else begin
-                random_range = $urandom_range(1, 100);
-                $display("Done push of data from intra %d percent and inter %d percent %d", random_range, 100-random_range,count_fram);
             end
+
+
+            $display("Done push of data into intra4x4 and intra8x8cc");
             if (!xbuffer_DONE)
             begin
                 wait (xbuffer_DONE == 1);
@@ -782,8 +994,7 @@ module h264topsim(input bit clk2);
         `endif
 		$fclose(recb);
 
-		$finish;
-
+		$finish;   
     end
 
     localparam hd = 200'haa0000000167420028da0582590000000168ce388000000001;
@@ -897,10 +1108,10 @@ module h264topsim(input bit clk2);
 		begin
 			if ( recon_FBSTROBE )
 			begin
-				yrvideo[xr  ][yr] = recon_FEEDB[ 7: 0];
-				yrvideo[xr+1][yr] = recon_FEEDB[15: 8];
-				yrvideo[xr+2][yr] = recon_FEEDB[23:16]; 
-				yrvideo[xr+3][yr] = recon_FEEDB[31:24];
+				yrvideo_curr[xr  ][yr] = recon_FEEDB[ 7: 0];
+				yrvideo_curr[xr+1][yr] = recon_FEEDB[15: 8];
+				yrvideo_curr[xr+2][yr] = recon_FEEDB[23:16]; 
+				yrvideo_curr[xr+3][yr] = recon_FEEDB[31:24];
 				yr = yr + 1;
 				if (yr % 4 == 0)
 				begin
@@ -938,17 +1149,17 @@ module h264topsim(input bit clk2);
 			begin
 				if ( cuvr == 0 )
 				begin
-					urvideo[cxr  ][cyr] = recon_FEEDB[ 7: 0];
-					urvideo[cxr+1][cyr] = recon_FEEDB[15: 8];
-					urvideo[cxr+2][cyr] = recon_FEEDB[23:16];
-					urvideo[cxr+3][cyr] = recon_FEEDB[31:24];
+					urvideo_curr[cxr  ][cyr] = recon_FEEDB[ 7: 0];
+					urvideo_curr[cxr+1][cyr] = recon_FEEDB[15: 8];
+					urvideo_curr[cxr+2][cyr] = recon_FEEDB[23:16];
+					urvideo_curr[cxr+3][cyr] = recon_FEEDB[31:24];
 				end
 				else
 				begin
-					vrvideo[cxr  ][cyr] = recon_FEEDB[ 7: 0];
-					vrvideo[cxr+1][cyr] = recon_FEEDB[15: 8];
-					vrvideo[cxr+2][cyr] = recon_FEEDB[23:16];
-					vrvideo[cxr+3][cyr] = recon_FEEDB[31:24];
+					vrvideo_curr[cxr  ][cyr] = recon_FEEDB[ 7: 0];
+					vrvideo_curr[cxr+1][cyr] = recon_FEEDB[15: 8];
+					vrvideo_curr[cxr+2][cyr] = recon_FEEDB[23:16];
+					vrvideo_curr[cxr+3][cyr] = recon_FEEDB[31:24];
 				end
 				cyr = cyr + 1;
 				if (cyr % 4 == 0)
@@ -987,21 +1198,21 @@ module h264topsim(input bit clk2);
 					begin
 						for (xr = 0; xr < IMGWIDTH; xr++)
 						begin
-							$fwrite(recb, "%c", yrvideo[xr][yr]);
+							$fwrite(recb, "%c", yrvideo_curr[xr][yr]);
 						end
 					end
 					for (cyr = 0; cyr < IMGHEIGHT/2; cyr++)
 					begin
 						for (cxr = 0; cxr < IMGWIDTH/2; cxr++)
 						begin
-							$fwrite(recb, "%c", urvideo[cxr][cyr]);
+							$fwrite(recb, "%c", urvideo_curr[cxr][cyr]);
 						end
 					end
 					for (cyr = 0; cyr < IMGHEIGHT/2; cyr++)
 					begin
 						for (cxr = 0; cxr < IMGWIDTH/2; cxr++)
 						begin
-							$fwrite(recb, "%c", vrvideo[cxr][cyr]);
+							$fwrite(recb, "%c", vrvideo_curr[cxr][cyr]);
 						end
 					end
 					$display("%0d bytes written to recon_out.yuv", IMGHEIGHT*IMGWIDTH*3/2);
@@ -1017,7 +1228,7 @@ module h264topsim(input bit clk2);
 					begin
 						for (xr = 0; xr < IMGWIDTH; xr++)
 						begin
-							diff    = yrvideo[xr][yr] - yvideo[xr][yr];
+							diff    = yrvideo_curr[xr][yr] - yvideo[xr][yr];
 							ssqdiff = diff*diff + ssqdiff;
 						end
 					end
@@ -1042,7 +1253,7 @@ module h264topsim(input bit clk2);
 					begin
 						for (cxr = 0; cxr < IMGWIDTH/2-1; cxr++)
 						begin
-							diff    = urvideo[cxr][cyr] - uvideo[cxr][cyr];
+							diff    = urvideo_curr[cxr][cyr] - uvideo[cxr][cyr];
 							ssqdiff = diff*diff + ssqdiff;
 						end
 					end
@@ -1067,7 +1278,7 @@ module h264topsim(input bit clk2);
 					begin
 						for (cxr = 0; cxr < IMGWIDTH/2-1; cxr++)
 						begin
-							diff    = vrvideo[cxr][cyr] - vvideo[cxr][cyr];
+							diff    = vrvideo_curr[cxr][cyr] - vvideo[cxr][cyr];
 							ssqdiff = diff*diff + ssqdiff;
 						end
 					end

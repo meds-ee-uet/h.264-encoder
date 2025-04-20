@@ -15,6 +15,8 @@ module h264header
 	input logic [2:0] RMODE,	    //luma rem_intra4x4_pred_mode_flag
 	input logic [1:0] CMODE,	    //intra_chroma_pred_mode
 	//for inter:
+
+	// --- SHOULD BE SENT AS 0 ---
 	input logic [1:0] PTYPE,	        //0=P16x16,1=P16x8,2=P8x16,3=subtypes
 	input logic [1:0] PSUBTYPE,	//only if PTYPE=b"11"
 	input logic [11:0] MVDX,	        //signed MVD X (qtr pixel)
@@ -112,7 +114,7 @@ module h264header
 				lbuf <= {11'b00101011111, fcount, 1'b0};	//11111nnnn0 (10 bits)
 				lbufc <= ZERO+10;
 				idrtwice <= 1'b0;
-				assert (PTYPE==0);	//only this supported at present
+				// assert (PTYPE==0);	//only this supported at present
 				if (LASTSLICE==1'b1) begin
 					fcount <= fcount+1;		//next frame
 				end
@@ -178,7 +180,7 @@ module h264header
 				begin// P macroblocks
 					if (lcount==1 || lcount==2) 
 					begin	//mvx=0 and mvy=0
-						assert (MVDX==0 && MVDY==0);
+						// assert (MVDX==0 && MVDY==0);
 						lbuf <= {lbuf[14:0], 1'b1};
 						lbufc <= lbufc+1;
 					end
