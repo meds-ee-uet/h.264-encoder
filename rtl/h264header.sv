@@ -133,6 +133,7 @@ module h264header
 		begin
 			lstrobed <= LSTROBE;
 		end
+		// itu-t: macroblock_layer()
 		if (LSTROBE && !lstrobed && !NEWSLICE) 
 		begin	//luma
 			if (mbhead==1'b1 && pushf==1'b0) 
@@ -178,17 +179,26 @@ module h264header
                 end
 				else 
 				begin// P macroblocks
-					if (lcount==1 || lcount==2) 
-					begin	//mvx=0 and mvy=0
-						// assert (MVDX==0 && MVDY==0);
-						lbuf <= {lbuf[14:0], 1'b1};
-						lbufc <= lbufc+1;
-					end
+					// Encode motion vector differences (MVDx and MVDy)
+					if (lcount == 1) 
+						begin
+							// Encode MVDx (horizontal component)
+							lbuf <= {lbuf[14:0], MVDX}; // Append MVDx to the buffer
+							lbufc <= lbufc + 12; // Increment bit count
+						end
+					else if (lcount == 2) 
+						begin
+							// Encode MVDy (vertical component)
+							lbuf <= {lbuf[14:0], MVDY}; // Append MVDy to the buffer
+							lbufc <= lbufc + 12; // Increment bit count
+						end
 				end
 				if (lcount==15) 
 				begin
 					tailf <= 1'b1;
 					pushf <= 1'b1;
+					ccount <= 1'b0;
+					cmodei <= 1'b0;
 				end
 			end
 		end
