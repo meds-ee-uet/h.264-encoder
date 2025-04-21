@@ -1,4 +1,4 @@
-module controller_mc (
+module controller_mc_lc (
     input logic clk,
     input logic reset,
 
