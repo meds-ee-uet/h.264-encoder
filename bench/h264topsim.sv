@@ -297,8 +297,8 @@ module h264topsim(input bit clk2);
 
     logic [31:0] inter_mc_REF_L;
     logic [31:0] inter_mc_CURR_L;
-    logic [15:0] inter_mc_REF_C;
-    logic [15:0] inter_mc_CURR_C;
+    logic [63:0] inter_mc_REF_C;
+    logic [63:0] inter_mc_CURR_C;
 
     logic inter_mc_READYI_C;
     logic inter_mc_READYI_L;
@@ -841,40 +841,53 @@ module h264topsim(input bit clk2);
 
                             for (j = 0; j <= 3; j++)
                                 begin
-                                    for (i = 0; i <= 1; i++)
+                                    if (cuv == 0)
                                     begin
-                                        if (cuv == 0)
-                                        begin
-                                            inter_mc_CURR_C = {
-                                                uvideo[cx+i*4+3][cy], 
-                                                uvideo[cx+i*4+2][cy], 
-                                                uvideo[cx+i*4+1][cy], 
-                                                uvideo[cx+i*4][cy]
-                                            };
-                                            inter_mc_REF_L = {
-                                                search_block_reg_u[(inter_mvx / 2 ) + 3][(inter_mvy / 2 )], 
-                                                search_block_reg_u[(inter_mvx / 2 ) + 2][(inter_mvy / 2 )], 
-                                                search_block_reg_u[(inter_mvx / 2 ) + 1][(inter_mvy / 2 )], 
-                                                search_block_reg_u[(inter_mvx / 2 )][(inter_mvy / 2 )]
-                                            };
-                                        end
-                                        else
-                                        begin
-                                            inter_mc_CURR_C = {
-                                                vvideo[cx+i*4+3][cy], 
-                                                vvideo[cx+i*4+2][cy], 
-                                                vvideo[cx+i*4+1][cy], 
-                                                vvideo[cx+i*4][cy]
-                                            };
-                                            inter_mc_REF_L = {
-                                                search_block_reg_v[(inter_mvx / 2 ) + 3][(inter_mvy / 2 )], 
-                                                search_block_reg_v[(inter_mvx / 2 ) + 2][(inter_mvy / 2 )], 
-                                                search_block_reg_v[(inter_mvx / 2 ) + 1][(inter_mvy / 2 )], 
-                                                search_block_reg_v[(inter_mvx / 2 )][(inter_mvy / 2 )]
-                                            };
-                                        end
-                                        @(posedge clk2);
+                                        inter_mc_CURR_C = {
+                                            uvideo[cx+i*4+7][cy], 
+                                            uvideo[cx+i*4+6][cy], 
+                                            uvideo[cx+i*4+5][cy], 
+                                            uvideo[cx+i*4+4][cy], 
+                                            uvideo[cx+i*4+3][cy], 
+                                            uvideo[cx+i*4+2][cy], 
+                                            uvideo[cx+i*4+1][cy], 
+                                            uvideo[cx+i*4][cy]
+                                        };
+                                        inter_mc_REF_C = {
+                                            search_block_reg_u[(inter_mvx / 2 ) + 7][(inter_mvy / 2 )],
+                                            search_block_reg_u[(inter_mvx / 2 ) + 6][(inter_mvy / 2 )],
+                                            search_block_reg_u[(inter_mvx / 2 ) + 5][(inter_mvy / 2 )],
+                                            search_block_reg_u[(inter_mvx / 2 ) + 4][(inter_mvy / 2 )],
+                                            search_block_reg_u[(inter_mvx / 2 ) + 3][(inter_mvy / 2 )], 
+                                            search_block_reg_u[(inter_mvx / 2 ) + 2][(inter_mvy / 2 )], 
+                                            search_block_reg_u[(inter_mvx / 2 ) + 1][(inter_mvy / 2 )], 
+                                            search_block_reg_u[(inter_mvx / 2 )][(inter_mvy / 2 )]
+                                        };
                                     end
+                                    else
+                                    begin
+                                        inter_mc_CURR_C = {
+                                            vvideo[cx+i*4+7][cy], 
+                                            vvideo[cx+i*4+6][cy], 
+                                            vvideo[cx+i*4+5][cy], 
+                                            vvideo[cx+i*4+4][cy], 
+                                            vvideo[cx+i*4+3][cy], 
+                                            vvideo[cx+i*4+2][cy], 
+                                            vvideo[cx+i*4+1][cy], 
+                                            vvideo[cx+i*4][cy]
+                                        };
+                                        inter_mc_REF_C = {
+                                            search_block_reg_v[(inter_mvx / 2 ) + 7][(inter_mvy / 2 )], 
+                                            search_block_reg_v[(inter_mvx / 2 ) + 6][(inter_mvy / 2 )], 
+                                            search_block_reg_v[(inter_mvx / 2 ) + 5][(inter_mvy / 2 )], 
+                                            search_block_reg_v[(inter_mvx / 2 ) + 4][(inter_mvy / 2 )], 
+                                            search_block_reg_v[(inter_mvx / 2 ) + 3][(inter_mvy / 2 )], 
+                                            search_block_reg_v[(inter_mvx / 2 ) + 2][(inter_mvy / 2 )], 
+                                            search_block_reg_v[(inter_mvx / 2 ) + 1][(inter_mvy / 2 )], 
+                                            search_block_reg_v[(inter_mvx / 2 )][(inter_mvy / 2 )]
+                                        };
+                                    end
+                                    @(posedge clk2);
                                     cy = cy + 1;
                                 end
                                 
