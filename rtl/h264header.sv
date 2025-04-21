@@ -197,8 +197,6 @@ module h264header
 				begin
 					tailf <= 1'b1;
 					pushf <= 1'b1;
-					ccount <= 1'b0;
-					cmodei <= 1'b0;
 				end
 			end
 		end
@@ -329,6 +327,8 @@ module h264header
 			pushf <= 1'b1;
 			tailf <= 1'b0;
 			emit <= emit+1;
+			ccount <= 1'b0;
+			cmodei <= 1'b0;
 		end
 
 		if (emit != 0) 

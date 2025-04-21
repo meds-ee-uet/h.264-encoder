@@ -299,6 +299,8 @@ module h264topsim(input bit clk2);
     logic [31:0] inter_mc_CURR_L;
     logic [63:0] inter_mc_REF_C;
     logic [63:0] inter_mc_CURR_C;
+    logic [31:0] inter_mc_residual_L;
+    logic [15:0] inter_mc_residual_C;
 
     logic inter_mc_READYI_C;
     logic inter_mc_READYI_L;
@@ -309,42 +311,40 @@ module h264topsim(input bit clk2);
     logic inter_mc_VALIDO_C;
     logic inter_mc_VALIDO_L;
 
-    mc #
+    assign inter_mc_READYO_L = coretransform_READY & xbuffer_READYI;
+    assign inter_mc_READYO_C = ;
+
+    mc_luma #
     (
         .MB_SIZE            (4),
-        .PIXEL_WIDTH        (IMGBITS),
-        .REF_FRAME_SIZE     (4),
+        .PIXEL_WIDTH        (IMGBITS)
     )
     ins_mc_luma
     (
-        // .mv_x               (),
-        // .mv_y               (),
-        .ref_frame          (inter_mc_REF_L),
-        .curr_mb            (inter_mc_CURR_L),
-        .src_ready          (inter_mc_READYI_L),
-        .src_valid          (inter_mc_VALIDI_L),
-        .dst_ready          (),
-        .dst_valid          (),
-        .residual           (),
+        .ref_frame          (inter_mc_REF_L     ),
+        .curr_mb            (inter_mc_CURR_L    ),
+        .src_ready          (inter_mc_READYI_L  ),
+        .src_valid          (inter_mc_VALIDI_L  ),
+        .dst_ready          (inter_mc_READYO_L  ),
+        .dst_valid          (inter_mc_VALIDO_L  ),
+        .residual           (inter_mc_residual_L)
     );
 
-    mc #
+    mc_chroma #
     (
-        .MB_SIZE            (2),
+        .BLOCK_SIZE_IN      (8),
         .PIXEL_WIDTH        (IMGBITS),
-        .REF_FRAME_SIZE     (2),
+        .BLOCK_SIZE_OUT     (2)
     )
     ins_mc_chroma
     (
-        // .mv_x               (),
-        // .mv_y               (),
-        .ref_frame          (inter_mc_REF_C),
-        .curr_mb            (inter_mc_CURR_C),
-        .src_ready          (inter_mc_READYI_C),
-        .src_valid          (inter_mc_VALIDI_C),
-        .dst_ready          (),
-        .dst_valid          (),
-        .residual           (),
+        .ref_frame          (inter_mc_REF_C     ),
+        .curr_mb            (inter_mc_CURR_C    ),
+        .src_ready          (inter_mc_READYI_C  ),
+        .src_valid          (inter_mc_VALIDI_C  ),
+        .dst_ready          (inter_mc_READYO_C  ),
+        .dst_valid          (inter_mc_VALIDO_C  ),
+        .residual           (inter_mc_residual_C)
     );
 
     // --- ADD LOGIC FOR MINTRA SINTRA AND IF NOT, THEN PMODE IS THE FINAL ONE
@@ -378,17 +378,15 @@ module h264topsim(input bit clk2);
                 end
         end
 
-    always_comb
-        begin
-            if (inter_flag_valid)
-                begin
-                    header_SINTRA = (inter_flag) ? 1'0 : 1'b1;
-                    header_MINTRA = (inter_flag) ? 1'0 : 1'b1;
-                end
-        end
-
-    assign header_MVDX = inter_mvx - MACRO_DIM;
-    assign header_MVDY = inter_mvy - MACRO_DIM;
+    assign header_LSTROBE = (inter_flag_valid) ? (intra4x4_STROBEO && intra4x4_READYO) || (inter_mc_VALIDO_L && inter_mc_READYO_L) : 1'b0;
+    // cstrobe only required in intra mb
+    assign header_CSTROBE = (inter_flag_valid) ? (intra4x4_STROBEO && intra4x4_READYO) : 1'b0;
+    // SINTRA >> SLICE INTRA >> Only first frame will be IDR, rest are non-IDR
+    assign header_SINTRA  = (framenum == 1);
+    // MINTRA >> MACROBLOCK INTRA >> can be inter mode or intra mode
+    assign header_MINTRA  = (inter_flag_valid) ? inter_flag : 1'b0;
+    assign header_MVDX = MACRO_DIM - inter_mvx;
+    assign header_MVDY = MACRO_DIM - inter_mvy;
 
     h264header header
     (
@@ -915,10 +913,10 @@ module h264topsim(input bit clk2);
                     end
                 
                 // Update macroblock position and search block address after inter-prediction completes
-                if (ready == 1 && !inter_flag_valid) 
+                if (valid == 1) 
                     begin
                         // Calculate the absolute address of the search block in yrvideo_curr
-                        search_block_addr <= (mb_y - SEARCH_DIM / 2) * IMGWIDTH + (mb_x - SEARCH_DIM / 2);
+                        search_block_addr = (mb_y - SEARCH_DIM / 2) * IMGWIDTH + (mb_x - SEARCH_DIM / 2);
                 
                         // Ensure the search block stays within bounds using zero-padding
                         if (mb_x - SEARCH_DIM / 2 < 0 || mb_y - SEARCH_DIM / 2 < 0 ||
@@ -929,9 +927,11 @@ module h264topsim(input bit clk2);
                         // Update macroblock position for the next iteration
                         mb_x <= mb_x + 16; // Move to the next macroblock in the row
                         if (mb_x + 16 >= IMGWIDTH) begin
-                            mb_x <= 0; // Reset to the first column
-                            mb_y <= mb_y + 16; // Move to the next row
+                            mb_x = 0; // Reset to the first column
+                            mb_y = mb_y + 16; // Move to the next row
                         end
+
+                        @(posedge clk2);
                     end
                 
                 // Inter-Prediction Logic
