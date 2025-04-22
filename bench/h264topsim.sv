@@ -25,6 +25,7 @@ module h264topsim(input bit clk2);
 
     integer framenum = 0;
     integer x, y, cx, cy, cuv, i, j, w, count;
+    integer x_yintra, y_yintra;
     reg [IMGBITS-1:0] c;
 	
 	// Signals
@@ -480,7 +481,11 @@ module h264topsim(input bit clk2);
 		end
         if (recon_FBSTROBE)
         begin
-            toppix[{mbx, intra4x4_XXO}] <= recon_FEEDB;
+            if(y_yintra == 0)
+                toppix[{mbx, intra4x4_XXO}] <= '0;
+            else
+                toppix[{mbx, intra4x4_XXO}] <= {yvideo[x_yintra+3][y_yintra-1], yvideo[x_yintra+2][y_yintra-1], yvideo[x_yintra+1][y_yintra-1], yvideo[x_yintra][y_yintra-1]};
+
         end 
         if (intra4x4_MSTROBEO)
         begin
@@ -603,6 +608,8 @@ module h264topsim(input bit clk2);
                     begin
                         for (j = 0; j <= 3; j++)
                         begin
+                            x_yintra = x;
+                            y_yintra = y;
                             intra4x4_DATAI = 
                             {
                                 yvideo[x+3][y], 
