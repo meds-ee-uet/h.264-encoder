@@ -1,4 +1,4 @@
-module h264buffer
+module h264buffer_intra
 (
 	input logic CLK,					    //clock
 	input logic NEWSLICE,			        //-reset: this is the first in a slice
