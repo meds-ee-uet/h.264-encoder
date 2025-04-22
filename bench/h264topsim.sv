@@ -8,6 +8,10 @@ module h264topsim(input bit clk2);
     localparam IMGBITS      = 8;
     localparam INITQP       = 28;
 
+    import "DPI-C" context task dpi_open_file(input string filename);
+    import "DPI-C" context task dpi_write_byte(input byte c);
+    import "DPI-C" context task dpi_close_file();
+
 	// Verbose Switches
 
 	bit computesnr = 1;
@@ -746,7 +750,11 @@ module h264topsim(input bit clk2);
 		$display("%2d frames processed", framenum);
 
 		$fclose(inb);
-		$fclose(outb);
+        `ifdef VERILATOR
+            dpi_close_file();
+        `else
+            $fclose(outb);
+        `endif
 		$fclose(recb);
 
 		$finish;
@@ -756,6 +764,41 @@ module h264topsim(input bit clk2);
     localparam hd = 200'haa0000000167420028da0582590000000168ce388000000001;
     localparam hdsize = 24;
 
+
+`ifdef VERILATOR
+    initial 
+    begin
+        dpi_open_file("sample_out.264");
+
+        // Write header
+        for (int i = hdsize-1; i >= 0; i--) 
+        begin
+            c = hd[8*i +: 8];
+            dpi_write_byte(c);
+        end
+
+        // Loop to write runtime bytes
+        forever 
+        begin
+            if (tobytes_STROBE) 
+            begin
+                dpi_write_byte(tobytes_BYTE);
+                count = count + 1;
+            end
+
+            if (tobytes_DONE) 
+            begin
+                count = 0;
+                dpi_write_byte(8'b00000000);
+                dpi_write_byte(8'b00000000);
+                dpi_write_byte(8'b00000000);
+                dpi_write_byte(8'b00000001);
+            end
+
+            @(posedge clk);
+        end
+    end
+`else
     initial
     begin
         outb = $fopen("sample_out.264", "wb");
@@ -765,6 +808,7 @@ module h264topsim(input bit clk2);
             c = hd[ 8*i +: 8 ];
             $fwrite(outb, "%c", c);
         end
+
         forever
         begin
             if (tobytes_STROBE)
@@ -772,6 +816,7 @@ module h264topsim(input bit clk2);
                 $fwrite(outb, "%c", tobytes_BYTE);
                 count = count + 1;
             end
+
             if (tobytes_DONE)
             begin
                 count = 0;
@@ -780,9 +825,11 @@ module h264topsim(input bit clk2);
                 $fwrite(outb, "%c", 8'b00000000);
                 $fwrite(outb, "%c", 8'b00000001);
 		    end
-		@(posedge clk);
+
+            @(posedge clk);
 	    end
     end
+`endif
 
 	always_ff @(posedge clk2)
 	begin

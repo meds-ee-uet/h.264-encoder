@@ -37,7 +37,7 @@ verilate_command := $(verilator) +define+$(defines) \
 	-Wall -Wno-TIMESCALEMOD -Wno-MULTIDRIVEN -Wno-CASEOVERLAP -Wno-WIDTH \
 	-Wno-UNOPTFLAT -Wno-IMPLICIT -Wno-PINMISSING -Wno-fatal \
 	--timing --Mdir $(ver-library) \
-	--exe bench/h264topsim.cpp \
+	--exe bench/h264topsim.cpp bench/dpi_writer.cpp \
 	--trace-structs --trace  \
 	-CFLAGS "-std=c++20 -fcoroutines" 
 	
