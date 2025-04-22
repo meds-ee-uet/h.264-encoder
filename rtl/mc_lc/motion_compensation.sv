@@ -1,4 +1,4 @@
-module mc_lc #(
+module motion_compensation #(
     parameter MB_SIZE = 4,      // Macroblock size (default 4x4)
     parameter PIXEL_WIDTH = 8   // Pixel bit-width (default 8 bits)
 )(
@@ -6,8 +6,8 @@ module mc_lc #(
     input logic reset,
 
     // Inputs
-    input var logic [PIXEL_WIDTH-1:0] ref_frame [0:MB_SIZE-1][0:MB_SIZE-1], // Reference frame (4x4)
-    input var logic [PIXEL_WIDTH-1:0] curr_mb [0:MB_SIZE-1][0:MB_SIZE-1],   // Current macroblock (4x4)
+    input var logic [(PIXEL_WIDTH*MB_SIZE) - 1:0] ref_frame, // Reference frame (array)
+    input var logic [(PIXEL_WIDTH*MB_SIZE) - 1:0] curr_mb,   // Current macroblock (array)
 
     input logic src_valid,              // Source valid signal
     output logic src_ready,             // Source ready signal
@@ -15,20 +15,15 @@ module mc_lc #(
     output logic dst_valid,             // Destination valid signal
 
     // Outputs
-    output logic [PIXEL_WIDTH-1:0] residual [0:MB_SIZE-1][0:MB_SIZE-1] // Residual block (4x4)
+    output logic [(PIXEL_WIDTH*MB_SIZE) - 1:0] residual // Residual block (array)
 );
 
-    logic processing;                  // Indicates if the module is currently processing
-    logic [PIXEL_WIDTH-1:0] temp_residual [0:MB_SIZE-1][0:MB_SIZE-1]; // Temporary residual storage
+    logic processing; // Indicates if the module is currently processing
 
     always_ff @(posedge clk or posedge reset) begin
         if (reset) begin
             // Reset outputs and internal state
-            for (int i = 0; i < MB_SIZE; i++) begin
-                for (int j = 0; j < MB_SIZE; j++) begin
-                    residual[i][j] <= 0;
-                end
-            end
+            residual <= 0;
             processing <= 0;
             dst_valid <= 0;
             src_ready <= 0;
@@ -39,19 +34,14 @@ module mc_lc #(
                 processing <= 1;
                 dst_valid <= 0;
 
-                // Compute residual row by row
+                // Compute residual for each segment of the array
                 for (int i = 0; i < MB_SIZE; i++) begin
-                    for (int j = 0; j < MB_SIZE; j++) begin
-                        temp_residual[i][j] <= curr_mb[i][j] - ref_frame[i][j];
-                    end
+                    residual[(PIXEL_WIDTH*(i+1))-1 -: PIXEL_WIDTH] <= 
+                        curr_mb[(PIXEL_WIDTH*(i+1))-1 -: PIXEL_WIDTH] - 
+                        ref_frame[(PIXEL_WIDTH*(i+1))-1 -: PIXEL_WIDTH];
                 end
             end else if (processing && dst_ready) begin
                 // Transfer residual data to output when destination is ready
-                for (int i = 0; i < MB_SIZE; i++) begin
-                    for (int j = 0; j < MB_SIZE; j++) begin
-                        residual[i][j] <= temp_residual[i][j];
-                    end
-                end
                 dst_valid <= 1; // Indicate that the output is valid
                 processing <= 0; // Reset processing flag
             end else begin
