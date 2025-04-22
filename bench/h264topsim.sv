@@ -129,6 +129,28 @@ module h264topsim(input bit clk2);
     logic recon_FBCSTROBE;
     logic [31:0] recon_FEEDB;
 
+    logic xbuffer_NLOAD_intra;
+	logic [2:0] xbuffer_NX_intra;
+	logic [2:0] xbuffer_NY_intra;	
+	logic [1:0] xbuffer_NV_intra;
+	logic xbuffer_NXINC_intra;		
+	logic xbuffer_READYI_intra;
+	logic xbuffer_CCIN_intra;
+	logic xbuffer_DONE_intra;
+    logic xbuffer_VOUT_intra;
+    logic xbuffer_VALIDO_intra;
+
+    logic xbuffer_NLOAD_inter;
+	logic [2:0] xbuffer_NX_inter;
+	logic [2:0] xbuffer_NY_inter;	
+	logic [1:0] xbuffer_NV_inter;
+	logic xbuffer_NXINC_inter;		
+	logic xbuffer_READYI_inter;
+	logic xbuffer_CCIN_inter;
+	logic xbuffer_DONE_inter;
+    logic xbuffer_VOUT_inter;
+    logic xbuffer_VALIDO_inter;
+
     logic xbuffer_NLOAD;
 	logic [2:0] xbuffer_NX;
 	logic [2:0] xbuffer_NY;	
@@ -137,6 +159,8 @@ module h264topsim(input bit clk2);
 	logic xbuffer_READYI;
 	logic xbuffer_CCIN;
 	logic xbuffer_DONE;
+    logic [11:0] xbuffer_VOUT;
+    logic xbuffer_VALIDO;
 
     logic cavlc_ENABLE;
 	logic cavlc_READY;
@@ -222,7 +246,7 @@ module h264topsim(input bit clk2);
         .CHREADY(intra4x4_CHREADY)
     );
 
-    assign intra4x4_READYO = coretransform_READY & xbuffer_READYI;
+    assign intra4x4_READYO = inter_flag_valid ? coretransform_READY && xbuffer_READYI && !inter_flag : 1'b0;
     assign intra4x4_TOPI   = toppix[{mbx, intra4x4_XXO}];
     assign intra4x4_TOPMI  = topmode[{mbx, intra4x4_XXO}];
 
@@ -254,7 +278,7 @@ module h264topsim(input bit clk2);
 
     // Inter-Prediction
     localparam MACRO_DIM  = 16;
-    localparam SEARCH_DIM = 48;
+    localparam SEARCH_DIM = 18;
     localparam PORT_WIDTH = MACRO_DIM + 1;
 
     logic        rst_n;
@@ -295,56 +319,31 @@ module h264topsim(input bit clk2);
         .min_sad            ( min_sad            )
     );
 
-    logic [31:0] inter_mc_REF_L;
-    logic [31:0] inter_mc_CURR_L;
-    logic [63:0] inter_mc_REF_C;
-    logic [63:0] inter_mc_CURR_C;
-    logic [31:0] inter_mc_residual_L;
-    logic [15:0] inter_mc_residual_C;
+    logic [31:0] inter_mc_REF;
+    logic [31:0] inter_mc_CURR;
+    logic [31:0] inter_mc_residual;
 
-    logic inter_mc_READYI_C;
-    logic inter_mc_READYI_L;
-    logic inter_mc_VALIDI_C;
-    logic inter_mc_VALIDI_L;
-    logic inter_mc_READYO_C;
-    logic inter_mc_READYO_L;
-    logic inter_mc_VALIDO_C;
-    logic inter_mc_VALIDO_L;
+    logic inter_mc_READYI;
+    logic inter_mc_VALIDI;
+    logic inter_mc_READYO;
+    logic inter_mc_VALIDO;
 
-    assign inter_mc_READYO_L = coretransform_READY & xbuffer_READYI;
-    assign inter_mc_READYO_C = ;
+    assign inter_mc_READYO = inter_flag_valid ? coretransform_READY && xbuffer_READYI && inter_flag : 1'b0;
 
-    mc_luma #
+    mc #
     (
         .MB_SIZE            (4),
         .PIXEL_WIDTH        (IMGBITS)
     )
-    ins_mc_luma
+    ins_mc
     (
-        .ref_frame          (inter_mc_REF_L     ),
-        .curr_mb            (inter_mc_CURR_L    ),
-        .src_ready          (inter_mc_READYI_L  ),
-        .src_valid          (inter_mc_VALIDI_L  ),
-        .dst_ready          (inter_mc_READYO_L  ),
-        .dst_valid          (inter_mc_VALIDO_L  ),
-        .residual           (inter_mc_residual_L)
-    );
-
-    mc_chroma #
-    (
-        .BLOCK_SIZE_IN      (8),
-        .PIXEL_WIDTH        (IMGBITS),
-        .BLOCK_SIZE_OUT     (2)
-    )
-    ins_mc_chroma
-    (
-        .ref_frame          (inter_mc_REF_C     ),
-        .curr_mb            (inter_mc_CURR_C    ),
-        .src_ready          (inter_mc_READYI_C  ),
-        .src_valid          (inter_mc_VALIDI_C  ),
-        .dst_ready          (inter_mc_READYO_C  ),
-        .dst_valid          (inter_mc_VALIDO_C  ),
-        .residual           (inter_mc_residual_C)
+        .ref_frame          (inter_mc_REF     ),
+        .curr_mb            (inter_mc_CURR    ),
+        .src_ready          (inter_mc_READYI  ),
+        .src_valid          (inter_mc_VALIDI  ),
+        .dst_ready          (inter_mc_READYO  ),
+        .dst_valid          (inter_mc_VALIDO  ),
+        .residual           (inter_mc_residual)
     );
 
     // --- ADD LOGIC FOR MINTRA SINTRA AND IF NOT, THEN PMODE IS THE FINAL ONE
@@ -378,7 +377,7 @@ module h264topsim(input bit clk2);
                 end
         end
 
-    assign header_LSTROBE = (inter_flag_valid) ? (intra4x4_STROBEO && intra4x4_READYO) || (inter_mc_VALIDO_L && inter_mc_READYO_L) : 1'b0;
+    assign header_LSTROBE = (inter_flag_valid) ? (intra4x4_STROBEO && intra4x4_READYO) || (inter_mc_VALIDO && inter_mc_READYO) : 1'b0;
     // cstrobe only required in intra mb
     assign header_CSTROBE = (inter_flag_valid) ? (intra4x4_STROBEO && intra4x4_READYO) : 1'b0;
     // SINTRA >> SLICE INTRA >> Only first frame will be IDR, rest are non-IDR
@@ -421,10 +420,25 @@ module h264topsim(input bit clk2);
         .YNOUT(coretransform_YNOUT)
     );
 
-    assign coretransform_ENABLE = intra4x4_STROBEO | intra8x8cc_STROBEO;
-	assign coretransform_XXIN = intra4x4_STROBEO ? intra4x4_DATAO : intra8x8cc_DATAO;
+    assign coretransform_ENABLE = intra4x4_STROBEO || intra8x8cc_STROBEO || inter_mc_VAL;
+	// assign coretransform_XXIN = intra4x4_STROBEO ? intra4x4_DATAO : intra8x8cc_DATAO;
 	assign recon_BSTROBEI = intra4x4_STROBEO | intra8x8cc_STROBEO;
 	assign recon_BASEI = intra4x4_STROBEO ? intra4x4_BASEO : intra8x8cc_BASEO;
+
+    always_comb 
+        begin
+            if (inter_flag_valid)
+                begin
+                    if (inter_flag)
+                        begin
+                            coretransform_XXIN = inter_mc_residual;
+                        end
+                    else
+                        begin
+                            coretransform_XXIN = intra4x4_STROBEO ? intra4x4_DATAO : intra8x8cc_DATAO;
+                        end
+                end
+        end
 
     h264dctransform #
     (
@@ -442,7 +456,7 @@ module h264topsim(input bit clk2);
         .READYO(dctransform_READYO)
     );
 
-    assign dctransform_READYO = (intra4x4_CHREADY & ~coretransform_VALID);
+    assign dctransform_READYO = (inter_flag_valid) ? (intra4x4_CHREADY && ~coretransform_VALID) && (!inter_flag) : 1'b0;
 
     h264quantise quantise
     (
@@ -518,27 +532,63 @@ module h264topsim(input bit clk2);
         .DATAO(recon_FEEDB)
     );
 
-    h264buffer xbuffer
+    assign xbuffer_NLOAD  = inter_flag ? xbuffer_NLOAD_inter  : xbuffer_NLOAD_intra;
+    assign xbuffer_NX     = inter_flag ? xbuffer_NX_inter     : xbuffer_NX_intra;
+    assign xbuffer_NY     = inter_flag ? xbuffer_NY_inter     : xbuffer_NY_intra;
+    assign xbuffer_NV     = inter_flag ? xbuffer_NV_inter     : xbuffer_NV_intra;
+    assign xbuffer_NXINC  = inter_flag ? xbuffer_NXINC_inter  : xbuffer_NXINC_intra;
+    assign xbuffer_READYI = inter_flag ? xbuffer_READYI_inter : xbuffer_READYI_intra;
+    assign xbuffer_CCIN   = inter_flag ? xbuffer_CCIN_inter   : xbuffer_CCIN_intra;
+    assign xbuffer_DONE   = inter_flag ? xbuffer_DONE_inter   : xbuffer_DONE_intra;
+    assign xbuffer_VOUT   = inter_flag ? xbuffer_VOUT_inter   : xbuffer_VOUT_intra;
+    assign xbuffer_VALIDO = inter_flag ? xbuffer_VALIDO_inter : xbuffer_VALIDO_intra;
+
+    h264buffer_intra xbuffer_intra
     (
         .CLK(clk2), 
         .NEWSLICE(top_NEWSLICE), 
         .NEWLINE(top_NEWLINE), 
-        .VALIDI(quantise_VALID),
+        .VALIDI(quantise_VALID && !inter_flag && inter_flag_valid),
         .ZIN(quantise_ZOUT), 
-        .READYI(xbuffer_READYI), 
-        .CCIN(xbuffer_CCIN), 
-        .DONE(xbuffer_DONE),
-        .VOUT(cavlc_VIN), 
-        .VALIDO(cavlc_ENABLE), 
-        .NLOAD(xbuffer_NLOAD), 
-        .NX(xbuffer_NX),
-        .NY(xbuffer_NY), 
-        .NV(xbuffer_NV), 
-        .NXINC(xbuffer_NXINC), 
+        .READYI(xbuffer_READYI_intra), 
+        .CCIN(xbuffer_CCIN_intra), 
+        .DONE(xbuffer_DONE_intra),
+        .VOUT(xbuffer_VOUT_intra), 
+        .VALIDO(xbuffer_VALIDO_intra), 
+        .NLOAD(xbuffer_NLOAD_intra), 
+        .NX(xbuffer_NX_intra),
+        .NY(xbuffer_NY_intra), 
+        .NV(xbuffer_NV_intra), 
+        .NXINC(xbuffer_NXINC_intra), 
         .READYO(cavlc_READY),
         .TREADYO(tobytes_READY), 
         .HVALID(header_VALID) 
     );
+
+    h264buffer_inter xbuffer_inter
+    (
+        .CLK(clk2), 
+        .NEWSLICE(top_NEWSLICE), 
+        .NEWLINE(top_NEWLINE), 
+        .VALIDI(quantise_VALID && inter_flag && inter_flag_valid),
+        .ZIN(quantise_ZOUT), 
+        .READYI(xbuffer_READYI_inter), 
+        .CCIN(xbuffer_CCIN_inter), 
+        .DONE(xbuffer_DONE_inter),
+        .VOUT(xbuffer_VOUT_inter), 
+        .VALIDO(xbuffer_VALIDO_inter), 
+        .NLOAD(xbuffer_NLOAD_inter), 
+        .NX(xbuffer_NX_inter),
+        .NY(xbuffer_NY_inter), 
+        .NV(xbuffer_NV_inter), 
+        .NXINC(xbuffer_NXINC_inter), 
+        .READYO(cavlc_READY),
+        .TREADYO(tobytes_READY), 
+        .HVALID(header_VALID) 
+    );
+
+    assign cavlc_VIN      = xbuffer_VOUT;
+    assign cavlc_ENABLE   = xbuffer_VALIDO;
 
     h264cavlc cavlc
     (
@@ -718,7 +768,7 @@ module h264topsim(input bit clk2);
                     cy = cy - (cy % 8);
                     cuv = 0;
                 end
-                if ((intra4x4_READYI || inter_mc_READYI_L) && (y < IMGHEIGHT) && inter_flag_valid)
+                if ((intra4x4_READYI || inter_mc_READYI) && (y < IMGHEIGHT) && inter_flag_valid )
                 begin
                     @(posedge clk2);
 
@@ -751,19 +801,19 @@ module h264topsim(input bit clk2);
                     else 
                     begin
                         // INTER mode selected
-                        inter_mc_VALIDI_L = 1;
+                        inter_mc_VALIDI = 1;
 
                         for (i = 0; i <= 1; i++)
                         begin
                             for (j = 0; j <= 3; j++)
                             begin
-                                inter_mc_CURR_L = {
+                                inter_mc_CURR = {
                                     yvideo[x+3][y], 
                                     yvideo[x+2][y], 
                                     yvideo[x+1][y], 
                                     yvideo[x][y]
                                 };
-                                inter_mc_REF_L = {
+                                inter_mc_REF = {
                                     search_block_reg_y[inter_mvx+3][inter_mvy], 
                                     search_block_reg_y[inter_mvx+2][inter_mvy], 
                                     search_block_reg_y[inter_mvx+1][inter_mvy], 
@@ -775,7 +825,7 @@ module h264topsim(input bit clk2);
                             x = x - 16;	
                             y = y + 1;
                         end
-                        inter_mc_VALIDI_L = 0;
+                        inter_mc_VALIDI = 0;
                     end
 
                     // Advance block position after processing
