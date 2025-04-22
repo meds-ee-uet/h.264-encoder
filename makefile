@@ -1,25 +1,3 @@
-# design under test
-#DUT = h264topsim
-#RTL_DIR := rtl
-## dut parameters
-#ifeq ($(DUT), h264topsim)
-#	SRCS := \
-#		$(RTL_DIR)/*/*.sv	\
-#    	$(RTL_DIR)/*.sv	
-#    		
-#endif
-#
-#all: compile sim
-#
-#compile:
-#	vlog $(SRCS)
-#
-#sim:
-#	vsim -c -voptargs=+acc $(DUT) -do "run -all"
-#
-#clean:
-#	rm -rf work transcript *.wlf
-#
 #*********************************************************************
 #  * Filename :    Makefile
 #  * Date     :    18-04-2025
@@ -33,7 +11,7 @@ ver-library ?= ver_work
 WORK_DIR    ?= work
 defines     ?= 
 RTL_DIR 	:= rtl
-top 		?= h264topsim
+top 		?= h264topsim-std=c++20 -fcoroutines
 top_vsim    ?= tb
 
 # default command line argument
@@ -45,16 +23,24 @@ src := 	bench/*.sv									\
        	$(wildcard $(RTL_DIR)/coretransform/*.sv)	\
        	$(wildcard $(RTL_DIR)/dctransform/*.sv)		\
        	$(wildcard $(RTL_DIR)/intra4x4/*.sv)		\
-       	$(wildcard $(RTL_DIR)/intra8x8/*.sv)		\
-       	$(wildcard $(RTL_DIR)/inter_prediction/*.sv)		
+       	$(wildcard $(RTL_DIR)/intra8x8/*.sv)		
+#       	$(wildcard $(RTL_DIR)/inter_prediction/*.sv)		
 
 
 #=======================================================================================================
 #---------------------------------------Verilator Part--------------------------------------------------
 #=======================================================================================================
-verilate_command := $(verilator) +define+$(defines)	--cc $(src) --top-module $(top) -Wall -Wno-TIMESCALEMOD 			\
-					-Wno-MULTIDRIVEN -Wno-CASEOVERLAP -Wno-WIDTH -Wno-UNOPTFLAT -Wno-IMPLICIT -Wno-PINMISSING -Wno-fatal \
-					--timing --Mdir $(ver-library) --exe bench/h264topsim.cpp --trace-structs --trace				
+top := h264topsim
+
+verilate_command := $(verilator) +define+$(defines) \
+	--cc $(src) --top-module $(top) \
+	-Wall -Wno-TIMESCALEMOD -Wno-MULTIDRIVEN -Wno-CASEOVERLAP -Wno-WIDTH \
+	-Wno-UNOPTFLAT -Wno-IMPLICIT -Wno-PINMISSING -Wno-fatal \
+	--timing --Mdir $(ver-library) \
+	--exe bench/h264topsim.cpp bench/dpi_writer.cpp \
+	--trace-structs --trace  \
+	-CFLAGS "-std=c++20 -fcoroutines" 
+	
 verilate:
 	@echo "Building verilator model"
 	$(verilate_command)
