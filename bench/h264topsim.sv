@@ -31,6 +31,8 @@ module h264topsim(input bit clk2);
     integer mb_x, mb_y; // Current macroblock position (top-left corner)
     integer search_block_addr; // Absolute address of the search block in the buffer
     reg [IMGBITS-1:0] c;
+
+    integer y_processed = 0;
 	
 	// Signals
 
@@ -798,33 +800,30 @@ module h264topsim(input bit clk2);
                         end
                         intra4x4_STROBEI = 0;
                     end 
-                    else 
+                    else if ( (inter_flag == 1) && (!y_processed) )
                     begin
                         // INTER mode selected
                         inter_mc_VALIDI = 1;
 
-                        for (i = 0; i <= 1; i++)
+                        for (j = 0; j <= 3; j++)
                         begin
-                            for (j = 0; j <= 3; j++)
-                            begin
-                                inter_mc_CURR = {
-                                    yvideo[x+3][y], 
-                                    yvideo[x+2][y], 
-                                    yvideo[x+1][y], 
-                                    yvideo[x][y]
-                                };
-                                inter_mc_REF = {
-                                    search_block_reg_y[inter_mvx+3][inter_mvy], 
-                                    search_block_reg_y[inter_mvx+2][inter_mvy], 
-                                    search_block_reg_y[inter_mvx+1][inter_mvy], 
-                                    search_block_reg_y[inter_mvx][inter_mvy]
-                                };
-                                @(posedge clk2);
-                                x = x + 4;
-                            end
-                            x = x - 16;	
-                            y = y + 1;
+                            inter_mc_CURR = {
+                                yvideo[x+3][y], 
+                                yvideo[x+2][y], 
+                                yvideo[x+1][y], 
+                                yvideo[x][y]
+                            };
+                            inter_mc_REF = {
+                                search_block_reg_y[inter_mvx+3][inter_mvy], 
+                                search_block_reg_y[inter_mvx+2][inter_mvy], 
+                                search_block_reg_y[inter_mvx+1][inter_mvy], 
+                                search_block_reg_y[inter_mvx][inter_mvy]
+                            };
+                            @(posedge clk2);
+                            x = x + 4;
                         end
+                        x = x - 16;	
+                        y = y + 1;
                         inter_mc_VALIDI = 0;
                     end
 
@@ -842,10 +841,15 @@ module h264topsim(input bit clk2);
                             top_NEWLINE = 1;
                             $display("Newline pulsed Line: %2d Progress: %2d%%", y, y*100/IMGHEIGHT);
                         end
+
+                        if (inter_flag)
+                            begin
+                                y_processed = 1;
+                            end
                     end
                 end
 
-                if ((intra8x8cc_READYI || inter_mc_READYI_C) && (cy < IMGHEIGHT/2) && inter_flag_valid)
+                if ((intra8x8cc_READYI || inter_mc_READYI) && (cy < IMGHEIGHT/2) && inter_flag_valid)
                     begin
                         @(posedge clk2);
 
@@ -882,65 +886,49 @@ module h264topsim(input bit clk2);
                                 end
                             intra8x8cc_STROBEI = 0;
                         end
-                        else 
+                        else if ( (inter_flag == 1) && y_processed)
                         begin
                             // INTER mode selected
-                            inter_mc_VALIDI_C = 1;
+                            inter_mc_VALIDI = 1;
 
                             for (j = 0; j <= 3; j++)
                                 begin
                                     if (cuv == 0)
                                     begin
-                                        inter_mc_CURR_C = {
-                                            uvideo[cx+i*4+7][cy], 
-                                            uvideo[cx+i*4+6][cy], 
-                                            uvideo[cx+i*4+5][cy], 
-                                            uvideo[cx+i*4+4][cy], 
-                                            uvideo[cx+i*4+3][cy], 
-                                            uvideo[cx+i*4+2][cy], 
-                                            uvideo[cx+i*4+1][cy], 
-                                            uvideo[cx+i*4][cy]
+                                        inter_mc_CURR = {
+                                            uvideo[cx + (j*4) + 3 ][cy], 
+                                            uvideo[cx + (j*4) + 2 ][cy], 
+                                            uvideo[cx + (j*4) + 1 ][cy], 
+                                            uvideo[cx + (j*4)][cy]
                                         };
-                                        inter_mc_REF_C = {
-                                            search_block_reg_u[(inter_mvx / 2 ) + 7][(inter_mvy / 2 )],
-                                            search_block_reg_u[(inter_mvx / 2 ) + 6][(inter_mvy / 2 )],
-                                            search_block_reg_u[(inter_mvx / 2 ) + 5][(inter_mvy / 2 )],
-                                            search_block_reg_u[(inter_mvx / 2 ) + 4][(inter_mvy / 2 )],
-                                            search_block_reg_u[(inter_mvx / 2 ) + 3][(inter_mvy / 2 )], 
-                                            search_block_reg_u[(inter_mvx / 2 ) + 2][(inter_mvy / 2 )], 
-                                            search_block_reg_u[(inter_mvx / 2 ) + 1][(inter_mvy / 2 )], 
-                                            search_block_reg_u[(inter_mvx / 2 )][(inter_mvy / 2 )]
+                                        inter_mc_REF = {
+                                            search_block_reg_u[(inter_mvx / 2 ) + (j*4) + 3][(inter_mvy / 2 )], 
+                                            search_block_reg_u[(inter_mvx / 2 ) + (j*4) + 2][(inter_mvy / 2 )], 
+                                            search_block_reg_u[(inter_mvx / 2 ) + (j*4) + 1][(inter_mvy / 2 )], 
+                                            search_block_reg_u[(inter_mvx / 2 ) + (j*4)][(inter_mvy / 2 )]
                                         };
                                     end
                                     else
                                     begin
-                                        inter_mc_CURR_C = {
-                                            vvideo[cx+i*4+7][cy], 
-                                            vvideo[cx+i*4+6][cy], 
-                                            vvideo[cx+i*4+5][cy], 
-                                            vvideo[cx+i*4+4][cy], 
-                                            vvideo[cx+i*4+3][cy], 
-                                            vvideo[cx+i*4+2][cy], 
-                                            vvideo[cx+i*4+1][cy], 
-                                            vvideo[cx+i*4][cy]
+                                        inter_mc_CURR = {
+                                            vvideo[cx + (j*4) + 3][cy], 
+                                            vvideo[cx + (j*4) + 2][cy], 
+                                            vvideo[cx + (j*4) + 1][cy], 
+                                            vvideo[cx + (j*4) ][cy]
                                         };
-                                        inter_mc_REF_C = {
-                                            search_block_reg_v[(inter_mvx / 2 ) + 7][(inter_mvy / 2 )], 
-                                            search_block_reg_v[(inter_mvx / 2 ) + 6][(inter_mvy / 2 )], 
-                                            search_block_reg_v[(inter_mvx / 2 ) + 5][(inter_mvy / 2 )], 
-                                            search_block_reg_v[(inter_mvx / 2 ) + 4][(inter_mvy / 2 )], 
-                                            search_block_reg_v[(inter_mvx / 2 ) + 3][(inter_mvy / 2 )], 
-                                            search_block_reg_v[(inter_mvx / 2 ) + 2][(inter_mvy / 2 )], 
-                                            search_block_reg_v[(inter_mvx / 2 ) + 1][(inter_mvy / 2 )], 
-                                            search_block_reg_v[(inter_mvx / 2 )][(inter_mvy / 2 )]
+                                        inter_mc_REF = {
+                                            search_block_reg_v[(inter_mvx / 2 ) + (j*4) + 3][(inter_mvy / 2 )], 
+                                            search_block_reg_v[(inter_mvx / 2 ) + (j*4) + 2][(inter_mvy / 2 )], 
+                                            search_block_reg_v[(inter_mvx / 2 ) + (j*4) + 1][(inter_mvy / 2 )], 
+                                            search_block_reg_v[(inter_mvx / 2 ) + (j*4)][(inter_mvy / 2 )]
                                         };
                                     end
                                     @(posedge clk2);
-                                    cy = cy + 1;
-                                end
-                                
-                            inter_mc_VALIDI_C = 0;
+                                    cy += 1;
+                                end    
+                            inter_mc_VALIDI = 0;
                         end
+
                         if ((cy % 8) == 0) 
                         begin
                             if (cuv == 0) 
@@ -957,6 +945,10 @@ module h264topsim(input bit clk2);
                                 begin
                                     cx = 0;	
                                     cy = cy + 8;
+                                end
+                                if (inter_flag)
+                                begin
+                                    y_processed = 0;
                                 end
                             end
                         end
