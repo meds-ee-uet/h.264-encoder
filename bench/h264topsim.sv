@@ -225,27 +225,27 @@ module h264topsim(input bit clk2);
 
     h264intra4x4 intra4x4
     (
-        .CLK(clk2), 
-        .NEWSLICE(top_NEWSLICE), 
-        .NEWLINE(top_NEWLINE),
-        .STROBEI(intra4x4_STROBEI),
-        .DATAI(intra4x4_DATAI), 
-        .READYI(intra4x4_READYI),
-        .TOPI(intra4x4_TOPI), 
-        .TOPMI(intra4x4_TOPMI), 
-        .XXO(intra4x4_XXO),
-        .XXINC(intra4x4_XXINC), 
-        .FEEDBI(recon_FEEDB[31:24]), 
-        .FBSTROBE(recon_FBSTROBE),
-        .STROBEO(intra4x4_STROBEO), 
-        .DATAO(intra4x4_DATAO), 
-        .BASEO(intra4x4_BASEO),
-        .READYO(intra4x4_READYO),
-        .MSTROBEO(intra4x4_MSTROBEO),
-        .MODEO(intra4x4_MODEO), 
-        .PMODEO(intra4x4_PMODEO),
-        .RMODEO(intra4x4_RMODEO), 
-        .CHREADY(intra4x4_CHREADY)
+        .CLK                ( clk2                  ), 
+        .NEWSLICE           ( top_NEWSLICE          ), 
+        .NEWLINE            ( top_NEWLINE           ),
+        .STROBEI            ( intra4x4_STROBEI      ),
+        .DATAI              ( intra4x4_DATAI        ), 
+        .READYI             ( intra4x4_READYI       ),
+        .TOPI               ( intra4x4_TOPI         ), 
+        .TOPMI              ( intra4x4_TOPMI        ), 
+        .XXO                ( intra4x4_XXO          ),
+        .XXINC              ( intra4x4_XXINC        ), 
+        .FEEDBI             ( recon_FEEDB[31:24]    ), 
+        .FBSTROBE           ( recon_FBSTROBE        ),
+        .STROBEO            ( intra4x4_STROBEO      ), 
+        .DATAO              ( intra4x4_DATAO        ), 
+        .BASEO              ( intra4x4_BASEO        ),
+        .READYO             ( intra4x4_READYO       ),
+        .MSTROBEO           ( intra4x4_MSTROBEO     ),
+        .MODEO              ( intra4x4_MODEO        ), 
+        .PMODEO             ( intra4x4_PMODEO       ),
+        .RMODEO             ( intra4x4_RMODEO       ), 
+        .CHREADY            ( intra4x4_CHREADY      )
     );
 
     assign intra4x4_READYO = inter_flag_valid ? coretransform_READY && xbuffer_READYI && !inter_flag : 1'b0;
@@ -254,25 +254,25 @@ module h264topsim(input bit clk2);
 
     h264intra8x8cc intra8x8cc
     (
-        .CLK2(clk2),
-        .NEWSLICE(top_NEWSLICE), 
-        .NEWLINE(top_NEWLINE), 
-        .STROBEI(intra8x8cc_STROBEI), 
-        .DATAI(intra8x8cc_DATAI), 
-        .READYI(intra8x8cc_READYI),
-        .TOPI(intra8x8cc_TOPI), 
-        .XXO(intra8x8cc_XXO), 
-        .XXC(intra8x8cc_XXC),
-        .XXINC(intra8x8cc_XXINC), 
-        .FEEDBI(recon_FEEDB[31:24]), 
-        .FBSTROBE(recon_FBCSTROBE),
-        .STROBEO(intra8x8cc_STROBEO), 
-        .DATAO(intra8x8cc_DATAO), 
-        .BASEO(intra8x8cc_BASEO),
-        .READYO(intra4x4_CHREADY), 
-        .DCSTROBEO(intra8x8cc_DCSTROBEO), 
-        .DCDATAO(intra8x8cc_DCDATAO), 
-        .CMODEO(intra8x8cc_CMODEO)
+        .CLK2               ( clk2                  ),
+        .NEWSLICE           ( top_NEWSLICE          ), 
+        .NEWLINE            ( top_NEWLINE           ), 
+        .STROBEI            ( intra8x8cc_STROBEI    ), 
+        .DATAI              ( intra8x8cc_DATAI      ), 
+        .READYI             ( intra8x8cc_READYI     ),
+        .TOPI               ( intra8x8cc_TOPI       ), 
+        .XXO                ( intra8x8cc_XXO        ), 
+        .XXC                ( intra8x8cc_XXC        ),
+        .XXINC              ( intra8x8cc_XXINC      ), 
+        .FEEDBI             ( recon_FEEDB[31:24]    ), 
+        .FBSTROBE           ( recon_FBCSTROBE       ),
+        .STROBEO            ( intra8x8cc_STROBEO    ), 
+        .DATAO              ( intra8x8cc_DATAO      ), 
+        .BASEO              ( intra8x8cc_BASEO      ),
+        .READYO             ( intra4x4_CHREADY      ), 
+        .DCSTROBEO          ( intra8x8cc_DCSTROBEO  ), 
+        .DCDATAO            ( intra8x8cc_DCDATAO    ), 
+        .CMODEO             ( intra8x8cc_CMODEO     )
     );
 
     assign intra8x8cc_TOPI = toppixcc[{mbxcc, intra8x8cc_XXO}];
@@ -339,13 +339,13 @@ module h264topsim(input bit clk2);
     )
     ins_mc
     (
-        .ref_frame          (inter_mc_REF     ),
-        .curr_mb            (inter_mc_CURR    ),
-        .src_ready          (inter_mc_READYI  ),
-        .src_valid          (inter_mc_VALIDI  ),
-        .dst_ready          (inter_mc_READYO  ),
-        .dst_valid          (inter_mc_VALIDO  ),
-        .residual           (inter_mc_residual)
+        .ref_frame          ( inter_mc_REF      ),
+        .curr_mb            ( inter_mc_CURR     ),
+        .src_ready          ( inter_mc_READYI   ),
+        .src_valid          ( inter_mc_VALIDI   ),
+        .dst_ready          ( inter_mc_READYO   ),
+        .dst_valid          ( inter_mc_VALIDO   ),
+        .residual           ( inter_mc_residual )
     );
 
     // --- ADD LOGIC FOR MINTRA SINTRA AND IF NOT, THEN PMODE IS THE FINAL ONE
@@ -391,35 +391,35 @@ module h264topsim(input bit clk2);
 
     h264header header
     (
-		.CLK(clk),
-		.NEWSLICE(top_NEWSLICE),
-        .LASTSLICE(1'b0), //Not Used
-		.SINTRA(header_SINTRA),	
-		.MINTRA(header_MINTRA),
-		.LSTROBE(header_LSTROBE), // Was intra4x4_STROBEO
-		.CSTROBE(header_CSTROBE), // Was intra4x4_STROBEO
-		.QP(qp),
-		.PMODE(intra4x4_PMODEO),
-		.RMODE(intra4x4_RMODEO),
-		.CMODE(header_CMODE),
-		.PTYPE(2'b00),      // P_16x16 = 0
-		.PSUBTYPE(2'b00),   // Not required for P_16x16
-		.MVDX(header_MVDX),
-		.MVDY(header_MVDY),
-		.VE(header_VE),
-		.VL(header_VL),
-		.VALID(header_VALID)
+		.CLK                ( clk                   ),
+		.NEWSLICE           ( top_NEWSLICE          ),
+        .LASTSLICE          ( 1'b0                  ), //Not Used
+		.SINTRA             ( header_SINTRA         ),	
+		.MINTRA             ( header_MINTRA         ),
+		.LSTROBE            ( header_LSTROBE        ), // Was intra4x4_STROBEO
+		.CSTROBE            ( header_CSTROBE        ), // Was intra4x4_STROBEO
+		.QP                 ( qp                    ),
+		.PMODE              ( intra4x4_PMODEO       ),
+		.RMODE              ( intra4x4_RMODEO       ),
+		.CMODE              ( header_CMODE          ),
+		.PTYPE              ( 2'b00                 ), // P_16x16 = 0
+		.PSUBTYPE           ( 2'b00                 ),   // Not required for P_16x16
+		.MVDX               ( header_MVDX           ),
+		.MVDY               ( header_MVDY           ),
+		.VE                 ( header_VE             ),
+		.VL                 ( header_VL             ),
+		.VALID              ( header_VALID          )
 	);
 
     h264coretransform coretransform
     (
-        .CLK(clk2), 
-        .RESET(top_NEWSLICE),
-        .READY(coretransform_READY), 
-        .ENABLE(coretransform_ENABLE),
-        .XXIN(coretransform_XXIN), 
-        .VALID(coretransform_VALID), 
-        .YNOUT(coretransform_YNOUT)
+        .CLK                ( clk2                  ), 
+        .RESET              ( top_NEWSLICE          ),
+        .READY              ( coretransform_READY   ), 
+        .ENABLE             ( coretransform_ENABLE  ),
+        .XXIN               ( coretransform_XXIN    ), 
+        .VALID              ( coretransform_VALID   ), 
+        .YNOUT              ( coretransform_YNOUT   )
     );
 
     assign coretransform_ENABLE = intra4x4_STROBEO || intra8x8cc_STROBEO || inter_mc_VAL;
@@ -448,28 +448,28 @@ module h264topsim(input bit clk2);
     )
     dctransform
     (
-        .CLK(clk2), 
-        .RESET(~top_NEWSLICE),
-        .READYI(nop3),
-        .ENABLE(intra8x8cc_DCSTROBEO),
-        .XXIN(intra8x8cc_DCDATAO), 
-        .VALID(dctransform_VALID), 
-        .YYOUT(dctransform_YYOUT),
-        .READYO(dctransform_READYO)
+        .CLK                ( clk2                      ), 
+        .RESET              ( ~top_NEWSLICE             ),
+        .READYI             ( nop3                      ),
+        .ENABLE             ( intra8x8cc_DCSTROBEO      ),
+        .XXIN               ( intra8x8cc_DCDATAO        ), 
+        .VALID              ( dctransform_VALID         ), 
+        .YYOUT              ( dctransform_YYOUT         ),
+        .READYO             ( dctransform_READYO        )
     );
 
     assign dctransform_READYO = (inter_flag_valid) ? (intra4x4_CHREADY && ~coretransform_VALID) && (!inter_flag) : 1'b0;
 
     h264quantise quantise
     (
-		.CLK(clk2),
-		.ENABLE(quantise_ENABLE), 
-		.QP(qp),
-		.DCCI(dctransform_VALID),
-		.YNIN(quantise_YNIN),
-		.ZOUT(quantise_ZOUT),
-		.DCCO(quantise_DCCO),
-		.VALID(quantise_VALID)
+		.CLK                ( clk2                      ),
+		.ENABLE             ( quantise_ENABLE           ), 
+		.QP                 ( qp                        ),
+		.DCCI               ( dctransform_VALID         ),
+		.YNIN               ( quantise_YNIN             ),
+		.ZOUT               ( quantise_ZOUT             ),
+		.DCCO               ( quantise_DCCO             ),
+		.VALID              ( quantise_VALID            )
 	);
 
 	assign quantise_YNIN = coretransform_VALID ? $signed(coretransform_YNOUT) : $signed(dctransform_YYOUT);
@@ -477,14 +477,14 @@ module h264topsim(input bit clk2);
 
     h264dctransform invdctransform
     (
-        .CLK(clk2), 
-        .RESET(~top_NEWSLICE), 
-        .READYI(nop4),
-        .ENABLE(invdctransform_ENABLE),
-        .XXIN(invdctransform_ZIN), 
-        .VALID(invdctransform_VALID), 
-        .YYOUT(invdctransform_YYOUT),
-        .READYO(invdctransform_READY)
+        .CLK                ( clk2                      ), 
+        .RESET              ( ~top_NEWSLICE             ), 
+        .READYI             ( nop4                      ),
+        .ENABLE             ( invdctransform_ENABLE     ),
+        .XXIN               ( invdctransform_ZIN        ), 
+        .VALID              ( invdctransform_VALID      ), 
+        .YYOUT              ( invdctransform_YYOUT      ),
+        .READYO             ( invdctransform_READY      )
     );
 
     assign invdctransform_ENABLE = quantise_VALID & quantise_DCCO;
@@ -497,15 +497,15 @@ module h264topsim(input bit clk2);
     )
     h264dequantise
 	(
-		.CLK(clk2),
-		.ENABLE(dequantise_ENABLE),
-		.QP(qp),
-		.ZIN(dequantise_ZIN),
-		.DCCI(invdctransform_VALID),
-        .DCCO(nop1),
-		.LAST(dequantise_LAST),
-		.WOUT(dequantise_WOUT),
-		.VALID(dequantise_VALID)
+		.CLK                ( clk2                      ),
+		.ENABLE             ( dequantise_ENABLE         ),
+		.QP                 ( qp                        ),
+		.ZIN                ( dequantise_ZIN            ),
+		.DCCI               ( invdctransform_VALID      ),
+        .DCCO               ( nop1                      ),
+		.LAST               ( dequantise_LAST           ),
+		.WOUT               ( dequantise_WOUT           ),
+		.VALID              ( dequantise_VALID          )
 	);
 
 	assign dequantise_ENABLE = quantise_VALID & ~quantise_DCCO;
@@ -513,25 +513,25 @@ module h264topsim(input bit clk2);
 
     h264invtransform invtransform
 	(
-		.CLK(clk2),
-		.ENABLE(dequantise_VALID),
-		.WIN(dequantise_WOUT),
-		.VALID(invtransform_VALID),
-		.XOUT(invtransform_XOUT)
+		.CLK                ( clk2                      ),
+		.ENABLE             ( dequantise_VALID          ),
+		.WIN                ( dequantise_WOUT           ),
+		.VALID              ( invtransform_VALID        ),
+		.XOUT               ( invtransform_XOU          )
 	);
 
     h264recon recon
     (
-        .CLK2(clk2), 
-        .NEWSLICE(top_NEWSLICE), 
-        .STROBEI(invtransform_VALID), 
-        .DATAI(invtransform_XOUT),
-        .BSTROBEI(recon_BSTROBEI),
-        .BCHROMAI(intra8x8cc_STROBEO), 
-        .BASEI(recon_BASEI),
-        .STROBEO(recon_FBSTROBE), 
-        .CSTROBEO(recon_FBCSTROBE), 
-        .DATAO(recon_FEEDB)
+        .CLK2               ( clk2                      ), 
+        .NEWSLICE           ( top_NEWSLICE              ), 
+        .STROBEI            ( invtransform_VALID        ), 
+        .DATAI              ( invtransform_XOUT         ),
+        .BSTROBEI           ( recon_BSTROBEI            ),
+        .BCHROMAI           ( intra8x8cc_STROBEO        ), 
+        .BASEI              ( recon_BASEI               ),
+        .STROBEO            ( recon_FBSTROBE            ), 
+        .CSTROBEO           ( recon_FBCSTROBE           ), 
+        .DATAO              ( recon_FEEDB               )
     );
 
     assign xbuffer_NLOAD  = inter_flag ? xbuffer_NLOAD_inter  : xbuffer_NLOAD_intra;
@@ -547,46 +547,46 @@ module h264topsim(input bit clk2);
 
     h264buffer_intra xbuffer_intra
     (
-        .CLK(clk2), 
-        .NEWSLICE(top_NEWSLICE), 
-        .NEWLINE(top_NEWLINE), 
-        .VALIDI(quantise_VALID && !inter_flag && inter_flag_valid),
-        .ZIN(quantise_ZOUT), 
-        .READYI(xbuffer_READYI_intra), 
-        .CCIN(xbuffer_CCIN_intra), 
-        .DONE(xbuffer_DONE_intra),
-        .VOUT(xbuffer_VOUT_intra), 
-        .VALIDO(xbuffer_VALIDO_intra), 
-        .NLOAD(xbuffer_NLOAD_intra), 
-        .NX(xbuffer_NX_intra),
-        .NY(xbuffer_NY_intra), 
-        .NV(xbuffer_NV_intra), 
-        .NXINC(xbuffer_NXINC_intra), 
-        .READYO(cavlc_READY),
-        .TREADYO(tobytes_READY), 
-        .HVALID(header_VALID) 
+        .CLK                ( clk2                                                  ), 
+        .NEWSLICE           ( top_NEWSLICE                                          ), 
+        .NEWLINE            ( top_NEWLINE                                           ), 
+        .VALIDI             ( quantise_VALID && !inter_flag && inter_flag_valid     ),
+        .ZIN                ( quantise_ZOUT                                         ), 
+        .READYI             ( xbuffer_READYI_intra                                  ), 
+        .CCIN               ( xbuffer_CCIN_intra                                    ), 
+        .DONE               ( xbuffer_DONE_intra                                    ),
+        .VOUT               ( xbuffer_VOUT_intra                                    ), 
+        .VALIDO             ( xbuffer_VALIDO_intra                                  ), 
+        .NLOAD              ( xbuffer_NLOAD_intra                                   ), 
+        .NX                 ( xbuffer_NX_intra                                      ),
+        .NY                 ( xbuffer_NY_intra                                      ), 
+        .NV                 ( xbuffer_NV_intra                                      ), 
+        .NXINC              ( xbuffer_NXINC_intra                                   ), 
+        .READYO             ( cavlc_READY                                           ),
+        .TREADYO            ( tobytes_READY                                         ), 
+        .HVALID             ( header_VALID                                          ) 
     );
 
     h264buffer_inter xbuffer_inter
     (
-        .CLK(clk2), 
-        .NEWSLICE(top_NEWSLICE), 
-        .NEWLINE(top_NEWLINE), 
-        .VALIDI(quantise_VALID && inter_flag && inter_flag_valid),
-        .ZIN(quantise_ZOUT), 
-        .READYI(xbuffer_READYI_inter), 
-        .CCIN(xbuffer_CCIN_inter), 
-        .DONE(xbuffer_DONE_inter),
-        .VOUT(xbuffer_VOUT_inter), 
-        .VALIDO(xbuffer_VALIDO_inter), 
-        .NLOAD(xbuffer_NLOAD_inter), 
-        .NX(xbuffer_NX_inter),
-        .NY(xbuffer_NY_inter), 
-        .NV(xbuffer_NV_inter), 
-        .NXINC(xbuffer_NXINC_inter), 
-        .READYO(cavlc_READY),
-        .TREADYO(tobytes_READY), 
-        .HVALID(header_VALID) 
+        .CLK                ( clk2                                                  ), 
+        .NEWSLICE           ( top_NEWSLICE                                          ), 
+        .NEWLINE            ( top_NEWLINE                                           ), 
+        .VALIDI             ( quantise_VALID && inter_flag && inter_flag_valid      ),
+        .ZIN                ( quantise_ZOUT                                         ), 
+        .READYI             ( xbuffer_READYI_inter                                  ), 
+        .CCIN               ( xbuffer_CCIN_inter                                    ), 
+        .DONE               ( xbuffer_DONE_inter                                    ),
+        .VOUT               ( xbuffer_VOUT_inter                                    ), 
+        .VALIDO             ( xbuffer_VALIDO_inter                                  ), 
+        .NLOAD              ( xbuffer_NLOAD_inter                                   ), 
+        .NX                 ( xbuffer_NX_inter                                      ),
+        .NY                 ( xbuffer_NY_inter                                      ), 
+        .NV                 ( xbuffer_NV_inter                                      ), 
+        .NXINC              ( xbuffer_NXINC_inter                                   ), 
+        .READYO             ( cavlc_READY                                           ),
+        .TREADYO            ( tobytes_READY                                         ), 
+        .HVALID             ( header_VALID                                          ) 
     );
 
     assign cavlc_VIN      = xbuffer_VOUT;
@@ -594,31 +594,31 @@ module h264topsim(input bit clk2);
 
     h264cavlc cavlc
     (
-        .CLK(clk), 
-        .CLK2(clk2), 
-        .VS(nop2),
-        .ENABLE(cavlc_ENABLE), 
-        .READY(cavlc_READY), 
-        .VIN(cavlc_VIN),
-        .NIN(cavlc_NIN), 
-        .SIN(1'b0), 
-        .VE(cavlc_VE), 
-        .VL(cavlc_VL), 
-        .VALID(cavlc_VALID),
-        .XSTATE(cavlc_XSTATE), 
-        .NOUT(cavlc_NOUT)
+        .CLK                ( clk                   ), 
+        .CLK2               ( clk2                  ), 
+        .VS                 ( nop2                  ),
+        .ENABLE             ( cavlc_ENABLE          ), 
+        .READY              ( cavlc_READY           ), 
+        .VIN                ( cavlc_VIN             ),
+        .NIN                ( cavlc_NIN             ), 
+        .SIN                ( 1'b0                  ),  
+        .VE                 ( cavlc_VE              ), 
+        .VL                 ( cavlc_VL              ), 
+        .VALID              ( cavlc_VALID           ),
+        .XSTATE             ( cavlc_XSTATE          ), 
+        .NOUT               ( cavlc_NOUT            )
     );
 
     h264tobytes tobytes
     (
-        .CLK(clk), 
-        .VALID(tobytes_VALID), 
-        .READY(tobytes_READY), 
-        .VE(tobytes_VE), 
-        .VL(tobytes_VL), 
-        .BYTE(tobytes_BYTE), 
-        .STROBE(tobytes_STROBE), 
-        .DONE(tobytes_DONE)
+        .CLK                ( clk                   ), 
+        .VALID              ( tobytes_VALID         ), 
+        .READY              ( tobytes_READY         ), 
+        .VE                 ( tobytes_VE            ), 
+        .VL                 ( tobytes_VL            ), 
+        .BYTE               ( tobytes_BYTE          ), 
+        .STROBE             ( tobytes_STROBE        ), 
+        .DONE               ( tobytes_DONE          )
     );
 
    	assign tobytes_VE = header_VALID ? {5'b00000, header_VE} : cavlc_VALID ? cavlc_VE : {1'b0, 24'h030080};
