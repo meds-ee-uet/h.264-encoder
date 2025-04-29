@@ -16,7 +16,9 @@ module h264topsim(input bit clk2);
 
 	bit computesnr = 1;
 	bit dumprecon  = 1;
-
+    
+    int count_fram = 0;
+    int random_range;
 	// File Handles
     
 	integer inb, outb, recb;
@@ -170,6 +172,18 @@ module h264topsim(input bit clk2);
     logic nop2; //No operation
     logic nop3; //No operation
     logic nop4; //No operation
+
+    /////////////////////////////////////
+    // Dump VCD
+    /////////////////////////////////////
+    `ifdef vcd
+        initial
+        begin    
+            $display("VCD logging started");
+            $dumpfile("dump.vcd");
+            $dumpvars(0, tb);
+        end
+    `endif
 
     // Mode Decision
     integer frame_distance = 3;
@@ -454,6 +468,13 @@ module h264topsim(input bit clk2);
     //     .min_sad            ( min_sad            )
     // );
 
+    always_ff @(posedge clk) begin
+        if(top_NEWSLICE)
+            count_fram <= count_fram + 1;
+        else
+            count_fram <= count_fram; 
+    end
+
    	assign tobytes_VE = header_VALID ? {5'b00000, header_VE} : cavlc_VALID ? cavlc_VE : {1'b0, 24'h030080};
 	assign tobytes_VL = header_VALID ? header_VL : cavlc_VALID ? cavlc_VL : 5'b01000;
 	assign tobytes_VALID = header_VALID | align_VALID | cavlc_VALID;
@@ -723,8 +744,12 @@ module h264topsim(input bit clk2);
             //     @(posedge clk2);
             //     start = 1;
             // end
-
-            $display("Done push of data into intra4x4 and intra8x8cc");
+            if (count_fram == 1)
+                $display("Done push of data from intra4x4 and intra8x8cc");
+            else begin
+                random_range = $urandom_range(1, 100);
+                $display("Done push of data from intra %d percent and inter %d percent %d", random_range, 100-random_range,count_fram);
+            end
             if (!xbuffer_DONE)
             begin
                 wait (xbuffer_DONE == 1);
