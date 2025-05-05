@@ -32,7 +32,7 @@ module h264topsim(input bit clk2);
     integer search_block_addr; // Absolute address of the search block in the buffer
     reg [IMGBITS-1:0] c;
 
-    integer y_processed = 0;
+    integer luma_processed = 0;
 	
 	// Signals
 
@@ -799,8 +799,24 @@ module h264topsim(input bit clk2);
                             y = y + 1;
                         end
                         intra4x4_STROBEI = 0;
+
+                        // Advance block position after processing
+                        if ((y % 16) == 0)
+                        begin
+                            x = x + 16;
+                            y = y - 16;			
+                            if (x == IMGWIDTH)
+                            begin
+                                x = 0;			
+                                y = y + 16;
+                                if (xbuffer_DONE == 0)
+                                    wait (xbuffer_DONE == 1);
+                                top_NEWLINE = 1;
+                                $display("Newline pulsed Line: %2d Progress: %2d%%", y, y*100/IMGHEIGHT);
+                            end
+                        end
                     end 
-                    else if ( (inter_flag == 1) && (!y_processed) )
+                    else if ( (inter_flag == 1) && (!luma_processed) )
                     begin
                         // INTER mode selected
                         inter_mc_VALIDI = 1;
@@ -814,38 +830,51 @@ module h264topsim(input bit clk2);
                                 yvideo[x][y]
                             };
                             inter_mc_REF = {
-                                search_block_reg_y[inter_mvx+3][inter_mvy], 
-                                search_block_reg_y[inter_mvx+2][inter_mvy], 
-                                search_block_reg_y[inter_mvx+1][inter_mvy], 
-                                search_block_reg_y[inter_mvx][inter_mvy]
+                                search_block_reg_y[inter_mvx + (x % 16) +3][inter_mvy + (y % 16)], 
+                                search_block_reg_y[inter_mvx + (x % 16) +2][inter_mvy + (y % 16)], 
+                                search_block_reg_y[inter_mvx + (x % 16) +1][inter_mvy + (y % 16)], 
+                                search_block_reg_y[inter_mvx + (x % 16) ][inter_mvy + (y % 16)]
                             };
                             @(posedge clk2);
-                            x = x + 4;
+                            y = y + 1;
                         end
-                        x = x - 16;	
-                        y = y + 1;
                         inter_mc_VALIDI = 0;
-                    end
 
-                    // Advance block position after processing
-                    if ((y % 16) == 0)
-                    begin
-                        x = x + 16;
-                        y = y - 16;			
-                        if (x == IMGWIDTH)
+                        if (y % 4 == 0)
                         begin
-                            x = 0;			
-                            y = y + 16;
-                            if (xbuffer_DONE == 0)
-                                wait (xbuffer_DONE == 1);
-                            top_NEWLINE = 1;
-                            $display("Newline pulsed Line: %2d Progress: %2d%%", y, y*100/IMGHEIGHT);
-                        end
-
-                        if (inter_flag)
+                            y = y - 4;
+                            x = x + 4;
+                            if (x % 8 == 0)
                             begin
-                                y_processed = 1;
+                                x = x - 8;
+                                y = y + 4;
+                                if (y % 8 == 0)
+                                begin
+                                    y = y - 8;
+                                    x = x + 8;
+                                    if (x % 16 == 0)
+                                    begin
+                                        x = x - 16;
+                                        y = y + 8;
+                                        if (y % 16 == 0)
+                                        begin
+                                            y = y - 16;
+                                            x = x + 16;
+                                            luma_processed = 1;
+                                            if (x == IMGWIDTH)
+                                            begin
+                                                x = 0;
+                                                y = y + 16;
+                                                if (xbuffer_DONE == 0)
+                                                    wait (xbuffer_DONE == 1);
+                                                top_NEWLINE = 1;
+                                                $display("Newline pulsed Line: %2d Progress: %2d%%", y, y*100/IMGHEIGHT);
+                                            end                                        
+                                        end
+                                    end
+                                end
                             end
+                        end
                     end
                 end
 
@@ -885,8 +914,28 @@ module h264topsim(input bit clk2);
                                     cy = cy + 1;
                                 end
                             intra8x8cc_STROBEI = 0;
+
+                            if ((cy % 8) == 0) 
+                            begin
+                                if (cuv == 0) 
+                                begin
+                                    cy = cy-8;
+                                    cuv = 1;
+                                end
+                                else
+                                begin
+                                    cuv = 0;
+                                    cy = cy - 8;
+                                    cx = cx + 8;
+                                    if (cx == IMGWIDTH/2)
+                                    begin
+                                        cx = 0;	
+                                        cy = cy + 8;
+                                    end
+                                end
+                            end
                         end
-                        else if ( (inter_flag == 1) && y_processed)
+                        else if ( (inter_flag == 1) && luma_processed)
                         begin
                             // INTER mode selected
                             inter_mc_VALIDI = 1;
@@ -896,62 +945,64 @@ module h264topsim(input bit clk2);
                                     if (cuv == 0)
                                     begin
                                         inter_mc_CURR = {
-                                            uvideo[cx + (j*4) + 3 ][cy], 
-                                            uvideo[cx + (j*4) + 2 ][cy], 
-                                            uvideo[cx + (j*4) + 1 ][cy], 
-                                            uvideo[cx + (j*4)][cy]
+                                            uvideo[cx + 3 ][cy], 
+                                            uvideo[cx + 2 ][cy], 
+                                            uvideo[cx + 1 ][cy], 
+                                            uvideo[cx ][cy]
                                         };
                                         inter_mc_REF = {
-                                            search_block_reg_u[(inter_mvx / 2 ) + (j*4) + 3][(inter_mvy / 2 )], 
-                                            search_block_reg_u[(inter_mvx / 2 ) + (j*4) + 2][(inter_mvy / 2 )], 
-                                            search_block_reg_u[(inter_mvx / 2 ) + (j*4) + 1][(inter_mvy / 2 )], 
-                                            search_block_reg_u[(inter_mvx / 2 ) + (j*4)][(inter_mvy / 2 )]
+                                            search_block_reg_u[inter_mvx + (cx % 8) + 3][inter_mvy + (cy % 8)], 
+                                            search_block_reg_u[inter_mvx + (cx % 8) + 2][inter_mvy + (cy % 8)], 
+                                            search_block_reg_u[inter_mvx + (cx % 8) + 1][inter_mvy + (cy % 8)], 
+                                            search_block_reg_u[inter_mvx + (cx % 8) ][inter_mvy + (cy % 8)]
                                         };
                                     end
                                     else
                                     begin
                                         inter_mc_CURR = {
-                                            vvideo[cx + (j*4) + 3][cy], 
-                                            vvideo[cx + (j*4) + 2][cy], 
-                                            vvideo[cx + (j*4) + 1][cy], 
-                                            vvideo[cx + (j*4) ][cy]
+                                            vvideo[cx + 3][cy], 
+                                            vvideo[cx + 2][cy], 
+                                            vvideo[cx + 1][cy], 
+                                            vvideo[cx ][cy]
                                         };
                                         inter_mc_REF = {
-                                            search_block_reg_v[(inter_mvx / 2 ) + (j*4) + 3][(inter_mvy / 2 )], 
-                                            search_block_reg_v[(inter_mvx / 2 ) + (j*4) + 2][(inter_mvy / 2 )], 
-                                            search_block_reg_v[(inter_mvx / 2 ) + (j*4) + 1][(inter_mvy / 2 )], 
-                                            search_block_reg_v[(inter_mvx / 2 ) + (j*4)][(inter_mvy / 2 )]
+                                            search_block_reg_v[inter_mvx + (cx % 8) + 3][inter_mvy + (cy % 8)], 
+                                            search_block_reg_v[inter_mvx + (cx % 8) + 2][inter_mvy + (cy % 8)], 
+                                            search_block_reg_v[inter_mvx + (cx % 8) + 1][inter_mvy + (cy % 8)], 
+                                            search_block_reg_v[inter_mvx + (cx % 8) ][inter_mvy + (cy % 8)]
                                         };
                                     end
                                     @(posedge clk2);
                                     cy += 1;
                                 end    
                             inter_mc_VALIDI = 0;
-                        end
-
-                        if ((cy % 8) == 0) 
-                        begin
-                            if (cuv == 0) 
+                            if (cy % 4 == 0)
                             begin
-                                cy = cy-8;
-                                cuv = 1;
-                            end
-                            else
-                            begin
-                                cuv = 0;
-                                cy = cy - 8;
-                                cx = cx + 8;
-                                if (cx == IMGWIDTH/2)
+                                cy = cy - 4;
+                                cx = cx + 4;
+                                if (cx % 8 == 0)
                                 begin
-                                    cx = 0;	
-                                    cy = cy + 8;
-                                end
-                                if (inter_flag)
-                                begin
-                                    y_processed = 0;
+                                    cx = cx - 8;
+                                    cy = cy + 4;
+                                    if (cy % 8 == 0)
+                                    begin
+                                        cy  = cyr - 8;
+                                        cuv = cuv + 1;
+                                        if (cuv == 2)
+                                        begin
+                                            cuv = 0;
+                                            cx  = cx + 8;
+                                            luma_processed = 0;
+                                            if (cx == IMGWIDTH/2)
+                                            begin
+                                                cx = 0;
+                                                cy = cy + 8;
+                                            end
+                                        end
+                                    end
                                 end
                             end
-                        end
+                        end                        
                     end
                 
                 // Update macroblock position and search block address after inter-prediction completes
