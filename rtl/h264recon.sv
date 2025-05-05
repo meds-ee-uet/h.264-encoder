@@ -21,8 +21,8 @@ module h264recon
 
     logic [63:0] chromaf;
     logic [31:0] basex;
-    logic [5:0] basein = '0;
-    logic [5:0] baseout = '0;
+    logic [6:0] basein = '0;
+    logic [6:0] baseout = '0;
     logic [9:0] byte0 = '0;
     logic [9:0] byte1 = '0;
     logic [9:0] byte2 = '0;
@@ -33,8 +33,8 @@ module h264recon
     logic basein_rst;
     logic baseout_rst;
 
-    assign basein_rst = (basein == 6'b111111);
-    assign baseout_rst = (baseout == 6'b111111);
+    assign basein_rst = (basein == 64);
+    assign baseout_rst = (baseout == 64);
 
     // assign basex = basevec[baseout[2:0]];
     always_comb 
@@ -42,7 +42,7 @@ module h264recon
         if (inter_flag_valid)
         begin
             if (inter_flag)
-                basex = basevec[baseout[5:0]];
+                basex = basevec[baseout];
             else
                 basex = basevec[baseout[2:0]];
         end
