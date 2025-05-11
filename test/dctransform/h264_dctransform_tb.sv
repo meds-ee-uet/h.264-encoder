@@ -18,7 +18,7 @@ module h264dc_transform_tb;
         .TOGETHER(TOGETHER)
     ) dut (
         .CLK(CLK),
-        .RESET(RESET),
+        .RESET(!RESET),
         .READYI(READYI),
         .ENABLE(ENABLE),
         .XXIN(XXIN),

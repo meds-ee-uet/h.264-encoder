@@ -15,7 +15,7 @@ compile:
 	vlog $(SRCS)
 
 sim:
-	vsim -c -voptargs=+acc $(DUT) -do "run -all"
+	vsim -voptargs=+acc $(DUT) -do "run -all"
 
 clean:
 	rm -rf work transcript *.wlf
