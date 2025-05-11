@@ -185,18 +185,11 @@ module h264buffer
 			begin
 				if (!ichf) 
 				begin	//luma
-					// ix <= ix + 1;
 					if (ix==15) 
 					begin
 						isubmb <= isubmb+1;
-						// ichf <= ~isubmb[0];	//switch to chroma after even blocks
-						// if (isubmb==0 || isubmb==8) 
-						// begin
-						// 	ichdc <= 1'b1;
-						// end 
 						if (isubmb==15) 
 						begin
-							// imb <= imb+1;
 							ix <= 4'h0;
 							ichdc <= 1'b1;
 							ichf <= 1'b1;
@@ -205,7 +198,6 @@ module h264buffer
 						begin
 							ix <= ix + 1;
 						end
-						// assert (isubmb!=osubmb || ochf || ox>ix || imb==omb) else $error("xbuffer overflow? severity ERROR");
 					end
 					else
 					begin
@@ -237,6 +229,8 @@ module h264buffer
 						if (ichsubmb == 7)
 						begin
 							ichf <= 1'b0;
+							imb <= imb + 1;
+							assert (isubmb!=osubmb || ochf || ox>ix || imb==omb) else $error("xbuffer overflow? severity ERROR");
 						end
 					end 
 				end
