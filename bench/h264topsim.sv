@@ -99,9 +99,12 @@ module h264topsim(input bit clk2);
     logic coretransform_VALID;
     logic [13:0] coretransform_YNOUT;
 
-    logic dctransform_VALID;
+    logic dctransform_READYI;
+    logic dctransform_ENABLE;
+    logic [15:0] dctransform_XXIN;
     logic [15:0] dctransform_YYOUT;
     logic dctransform_READYO;
+    logic dctransform_VALIDO;
 
     logic quantise_ENABLE;
     logic [15:0] quantise_YNIN;
@@ -324,28 +327,33 @@ module h264topsim(input bit clk2);
     logic [31:0] inter_mc_REF;
     logic [31:0] inter_mc_CURR;
     logic [31:0] inter_mc_residual;
+    logic [15:0] inter_mc_DCCO;
 
     logic inter_mc_READYI;
     logic inter_mc_VALIDI;
     logic inter_mc_READYO;
     logic inter_mc_VALIDO;
+    logic inter_mc_DCCO_VALID;
 
     assign inter_mc_READYO = inter_flag_valid ? coretransform_READY && xbuffer_READYI && inter_flag : 1'b0;
 
     mc #
     (
         .MB_SIZE            (4),
+        .N_DC               (4),            // no. of dc coefficients to capture
         .PIXEL_WIDTH        (IMGBITS)
     )
     ins_mc
     (
-        .ref_frame          ( inter_mc_REF      ),
-        .curr_mb            ( inter_mc_CURR     ),
-        .src_ready          ( inter_mc_READYI   ),
-        .src_valid          ( inter_mc_VALIDI   ),
-        .dst_ready          ( inter_mc_READYO   ),
-        .dst_valid          ( inter_mc_VALIDO   ),
-        .residual           ( inter_mc_residual )
+        .ref_frame          ( inter_mc_REF          ),
+        .curr_mb            ( inter_mc_CURR         ),
+        .src_ready          ( inter_mc_READYI       ),
+        .src_valid          ( inter_mc_VALIDI       ),
+        .dst_ready          ( inter_mc_READYO       ),
+        .dst_valid          ( inter_mc_VALIDO       ),
+        .residual           ( inter_mc_residual     ),
+        .dcco               ( inter_mc_DCCO         ),
+        .dcco_valid         ( inter_mc_DCCO_VALID   )
     );
 
     // --- ADD LOGIC FOR MINTRA SINTRA AND IF NOT, THEN PMODE IS THE FINAL ONE
@@ -450,14 +458,16 @@ module h264topsim(input bit clk2);
     (
         .CLK                ( clk2                      ), 
         .RESET              ( ~top_NEWSLICE             ),
-        .READYI             ( nop3                      ),
-        .ENABLE             ( intra8x8cc_DCSTROBEO      ),
-        .XXIN               ( intra8x8cc_DCDATAO        ), 
-        .VALID              ( dctransform_VALID         ), 
+        .READYI             ( nop4                      ),
+        .ENABLE             ( dctransform_ENABLE        ),
+        .XXIN               ( dctransform_XXIN          ), 
+        .VALID              ( dctransform_VALIDO        ), 
         .YYOUT              ( dctransform_YYOUT         ),
         .READYO             ( dctransform_READYO        )
     );
 
+    assign dctransform_ENABLE = inter_mc_DCCO_VALID || intra8x8cc_DCSTROBEO;
+    assign dctransform_XXIN   = (inter_flag) ? inter_mc_DCCO : intra8x8cc_DCDATAO;
     assign dctransform_READYO = (inter_flag_valid) ? (intra4x4_CHREADY && ~coretransform_VALID) && (!inter_flag) : 1'b0;
 
     h264quantise quantise
@@ -465,7 +475,7 @@ module h264topsim(input bit clk2);
 		.CLK                ( clk2                      ),
 		.ENABLE             ( quantise_ENABLE           ), 
 		.QP                 ( qp                        ),
-		.DCCI               ( dctransform_VALID         ),
+		.DCCI               ( dctransform_VALIDO         ),
 		.YNIN               ( quantise_YNIN             ),
 		.ZOUT               ( quantise_ZOUT             ),
 		.DCCO               ( quantise_DCCO             ),
@@ -473,7 +483,7 @@ module h264topsim(input bit clk2);
 	);
 
 	assign quantise_YNIN = coretransform_VALID ? $signed(coretransform_YNOUT) : $signed(dctransform_YYOUT);
-	assign quantise_ENABLE = coretransform_VALID | dctransform_VALID;
+	assign quantise_ENABLE = coretransform_VALID | dctransform_VALIDO;
 
     h264dctransform invdctransform
     (
@@ -1234,7 +1244,7 @@ module h264topsim(input bit clk2);
 	always_ff @(posedge clk2)
 	begin
 		assert (!(header_VALID && cavlc_VALID)) else $error("Two strobes clash.");
-		assert (!(coretransform_VALID && dctransform_VALID)) else $error("Two strobes clash.");
+		assert (!(coretransform_VALID && dctransform_VALIDO)) else $error("Two strobes clash.");
 		assert (!(intra4x4_STROBEO && intra8x8cc_STROBEO)) else $error("Two strobes clash.");
 		assert (!($isunknown(cavlc_VIN)));
 	end
