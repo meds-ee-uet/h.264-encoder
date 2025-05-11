@@ -1,4 +1,4 @@
-module h264buffer_intra
+module h264buffer
 (
 	input logic CLK,					    //clock
 	input logic NEWSLICE,			        //-reset: this is the first in a slice
@@ -22,6 +22,8 @@ module h264buffer_intra
 	input logic READYO,				//from cavlc module (goes inactive after block starts)
 	input logic TREADYO,				//from tobytes module: tells it to freeze
 	input logic HVALID 				//when header module outputting
+
+	input logic inter_flag,			// inter mode = 1, intra mode = 0
 );
 
 	logic [11:0] buff [511:0];
@@ -135,45 +137,110 @@ module h264buffer_intra
 				buff[addr] <= ZIN;
 			end 
 
-			if (!ichf) 
-			begin	//luma
-				ix <= ix + 1;
-				if (ix==15) 
-				begin
-					isubmb <= isubmb+1;
-					ichf <= ~isubmb[0];	//switch to chroma after even blocks
-					if (isubmb==0 || isubmb==8) 
+			// Intra Mode
+			if (inter_flag == 0)
+			begin
+				if (!ichf) 
+				begin	//luma
+					ix <= ix + 1;
+					if (ix==15) 
 					begin
-						ichdc <= 1'b1;
-					end 
-					if (isubmb==15) 
-					begin
-						imb <= imb+1;
+						isubmb <= isubmb+1;
+						ichf <= ~isubmb[0];	//switch to chroma after even blocks
+						if (isubmb==0 || isubmb==8) 
+						begin
+							ichdc <= 1'b1;
+						end 
+						if (isubmb==15) 
+						begin
+							imb <= imb+1;
+						end
+						assert (isubmb!=osubmb || ochf || ox>ix || imb==omb) else $error("xbuffer overflow? severity ERROR");
 					end
-					assert (isubmb!=osubmb || ochf || ox>ix || imb==omb) else $error("xbuffer overflow? severity ERROR");
 				end
-			end
-			else if (ichdc) 
-			begin	//chromadc
-				if (ix==3) 
-				begin
-					ix <= 4'h0;
-					ichdc <= 1'b0;
+				else if (ichdc) 
+				begin	//chromadc
+					if (ix==3) 
+					begin
+						ix <= 4'h0;
+						ichdc <= 1'b0;
+					end
+					else 
+					begin
+						ix <= ix + 1;
+					end 
 				end
-				else 
+				else if (!ichdc) 
 				begin
 					ix <= ix + 1;
-				end 
-			end
-			else if (!ichdc) 
-			begin
-				ix <= ix + 1;
-				if (ix==15) 
-				begin
-					ichsubmb <= ichsubmb + 1;
-					ichf <= 1'b0;
-				end 
+					if (ix==15) 
+					begin
+						ichsubmb <= ichsubmb + 1;
+						ichf <= 1'b0;
+					end 
+				end
 			end 
+			// Inter Mode
+			else if (inter_flag == 1)
+			begin
+				if (!ichf) 
+				begin	//luma
+					// ix <= ix + 1;
+					if (ix==15) 
+					begin
+						isubmb <= isubmb+1;
+						// ichf <= ~isubmb[0];	//switch to chroma after even blocks
+						// if (isubmb==0 || isubmb==8) 
+						// begin
+						// 	ichdc <= 1'b1;
+						// end 
+						if (isubmb==15) 
+						begin
+							// imb <= imb+1;
+							ix <= 4'h0;
+							ichdc <= 1'b1;
+							ichf <= 1'b1;
+						end
+						else
+						begin
+							ix <= ix + 1;
+						end
+						// assert (isubmb!=osubmb || ochf || ox>ix || imb==omb) else $error("xbuffer overflow? severity ERROR");
+					end
+					else
+					begin
+						ix <= ix + 1;
+					end
+				end
+				else if (ichdc) 
+				begin	//chromadc
+					if (ix==3) 
+					begin
+						ix <= 4'h0;
+						ichdc <= 1'b0;
+					end
+					else 
+					begin
+						ix <= ix + 1;
+					end 
+				end
+				else if (!ichdc) 
+				begin
+					ix <= ix + 1;
+					if (ix==15) 
+					begin
+						ichsubmb <= ichsubmb + 1;
+						if (ichsubmb == 3)
+						begin
+							ichdc <= 1'b1;
+						end
+						if (ichsubmb == 7)
+						begin
+							ichf <= 1'b0;
+						end
+					end 
+				end
+			end
 		end
 
 		if (!VALIDI && !NEWSLICE) 
