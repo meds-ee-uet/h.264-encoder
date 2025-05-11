@@ -123,7 +123,10 @@ module h264buffer
 			end	
 			else if (!ichdc) 
 			begin
-				addr = {1'b1, imb[0], ichsubmb, ix};
+				if (inter_flag == 0)
+					addr = {1'b1, imb[0], ichsubmb, ix};
+				else if (inter_flag == 1)
+					addr = {1'b1, imb[0], (ichsubmb-4), ix};
 			end
 			else  
 			begin
@@ -191,7 +194,6 @@ module h264buffer
 						if (isubmb==15) 
 						begin
 							ix <= 4'h0;
-							ichdc <= 1'b1;
 							ichf <= 1'b1;
 						end
 						else
@@ -210,6 +212,12 @@ module h264buffer
 					begin
 						ix <= 4'h0;
 						ichdc <= 1'b0;
+						if (ichsubmb == 0)
+						begin
+							ichf <= 1'b0;
+							imb <= imb + 1;
+							// assert (isubmb!=osubmb || ochf || ox>ix || imb==omb) else $error("xbuffer overflow? severity ERROR");
+						end
 					end
 					else 
 					begin
@@ -228,9 +236,7 @@ module h264buffer
 						end
 						if (ichsubmb == 7)
 						begin
-							ichf <= 1'b0;
-							imb <= imb + 1;
-							assert (isubmb!=osubmb || ochf || ox>ix || imb==omb) else $error("xbuffer overflow? severity ERROR");
+							ichdc <= 1'b1;
 						end
 					end 
 				end
