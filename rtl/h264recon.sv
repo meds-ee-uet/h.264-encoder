@@ -2,7 +2,6 @@ module h264recon
 (
     input logic CLK2,				// x2 clock
     // interface for inter
-    input logic inter_flag_valid,
     input logic inter_flag,
     // in interface:
     input logic NEWSLICE,			// reset
@@ -39,19 +38,16 @@ module h264recon
     // assign basex = basevec[baseout[2:0]];
     always_comb 
     begin
-        if (inter_flag_valid)
-        begin
-            if (inter_flag)
-                basex = basevec[baseout];
-            else
-                basex = basevec[baseout[2:0]];
-        end
+        if (inter_flag)
+            basex = basevec[baseout];
+        else
+            basex = basevec[baseout[2:0]];
     end
     
     always@(posedge CLK2) 
     begin
 
-        if (NEWSLICE || !inter_flag_valid) 
+        if (NEWSLICE) 
         begin    // reset
 			basein <= 6'd0;
 			baseout <= 6'd0;
