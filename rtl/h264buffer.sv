@@ -1,29 +1,31 @@
 module h264buffer
 (
-	input logic CLK,					    //clock
-	input logic NEWSLICE,			        //-reset: this is the first in a slice
-	input logic NEWLINE,				    //this is the first in a line
+	input logic CLK,					// clock
+	input logic NEWSLICE,			    // -reset: this is the first in a slice
+	input logic NEWLINE,				// this is the first in a line
 	
-	input logic VALIDI,			    //luma/chroma data here (15/16/4 of these)
-	input logic [11:0] ZIN,	            //luma/chroma data
-	output logic READYI = 1'b0,		    //set when ready for next luma/chroma
-	output logic CCIN = 1'b0,		    //set when inputting chroma
-	output logic DONE = 1'b0,		    //set when all done and quiescent
+	input logic VALIDI,			    	// luma/chroma data here (15/16/4 of these)
+	input logic [11:0] ZIN,	            // luma/chroma data
+	output logic READYI = 1'b0,		    // set when ready for next luma/chroma
+	output logic CCIN = 1'b0,		    // set when inputting chroma
+	output logic DONE = 1'b0,		    // set when all done and quiescent
 	
-	output logic [11:0] VOUT = 12'd0,	//luma/chroma data
-	output logic VALIDO = 1'b0,		                        //strobe for data out
+	output logic [11:0] VOUT = 12'd0,	// luma/chroma data
+	output logic VALIDO = 1'b0,		    // strobe for data out
 
-	output logic NLOAD = 1'b0,		                //load for CAVLC NOUT
-	output logic [2:0] NX = 3'b000,	                //X value for NIN/NOUT
-	output logic [2:0] NY = 3'b000,	                //Y value for NIN/NOUT
-	output logic [1:0] NV = 2'b00,	                //valid flags for NIN/NOUT (1=left, 2=top, 3=avg)
-	output logic NXINC =1'b0,	               //increment for X macroblock counter	
+	output logic NLOAD = 1'b0,		    // load for CAVLC NOUT
+	output logic [2:0] NX = 3'b000,	    // X value for NIN/NOUT
+	output logic [2:0] NY = 3'b000,	    // Y value for NIN/NOUT
+	output logic [1:0] NV = 2'b00,	    // valid flags for NIN/NOUT (1=left, 2=top, 3=avg)
+	output logic NXINC =1'b0,	        // increment for X macroblock counter	
 
-	input logic READYO,				//from cavlc module (goes inactive after block starts)
-	input logic TREADYO,				//from tobytes module: tells it to freeze
-	input logic HVALID 				//when header module outputting
+	input logic READYO,					// from cavlc module (goes inactive after block starts)
+	input logic TREADYO,				// from tobytes module: tells it to freeze
+	input logic HVALID, 				// when header module outputting
 
-	input logic inter_flag,			// inter mode = 1, intra mode = 0
+	input logic inter_flag,				// inter mode = 1, intra mode = 0
+
+	output logic buffer_FULL			// Indicates wether buffer got filled once or not for current mb
 );
 
 	logic [11:0] buff [511:0];
@@ -51,13 +53,27 @@ module h264buffer
 	
 	always_comb 
 	begin
-		if(omb==imb || (ochf==1 && isubmb<12) || (isubmb+1<osubmb && isubmb<12)) 
+		if (inter_flag == 0)
 		begin
-			READYI = 1'b1;
+			if(omb==imb || (ochf==1 && isubmb<12) || (isubmb+1<osubmb && isubmb<12)) 
+			begin
+				READYI = 1'b1;
+			end
+			else 
+			begin 
+				READYI = 1'b0;
+			end
 		end
-		else 
-		begin 
-			READYI = 1'b0;
+		else if (inter_flag == 1)
+		begin
+			if (omb == imb || isubmb < osubmb || (isubmb == osubmb && ochf == 0 && ichf == 0)) 
+			begin
+				READYI = 1'b1;
+			end
+			else 
+			begin 
+				READYI = 1'b0;
+			end
 		end
 
 		if(omb==imb && isubmb==0 && osubmb==0 && READYO==1'b1) 
@@ -156,13 +172,23 @@ module h264buffer
 						end 
 						if (isubmb==15) 
 						begin
+							buffer_FULL <= 1'b1;
 							imb <= imb+1;
 						end
+						else
+						begin
+							buffer_FULL <= 1'b0;
+						end
 						assert (isubmb!=osubmb || ochf || ox>ix || imb==omb) else $error("xbuffer overflow? severity ERROR");
+					end
+					else
+					begin
+						buffer_FULL <= 1'b0;
 					end
 				end
 				else if (ichdc) 
 				begin	//chromadc
+					buffer_FULL <= 1'b0;
 					if (ix==3) 
 					begin
 						ix <= 4'h0;
@@ -175,6 +201,7 @@ module h264buffer
 				end
 				else if (!ichdc) 
 				begin
+					buffer_FULL <= 1'b0;
 					ix <= ix + 1;
 					if (ix==15) 
 					begin
@@ -182,12 +209,17 @@ module h264buffer
 						ichf <= 1'b0;
 					end 
 				end
+				else
+				begin
+					buffer_FULL <= 1'b0;
+				end
 			end 
 			// Inter Mode
 			else if (inter_flag == 1)
 			begin
 				if (!ichf) 
 				begin	//luma
+					buffer_FULL <= 1'b0;
 					if (ix==15) 
 					begin
 						isubmb <= isubmb+1;
@@ -216,16 +248,23 @@ module h264buffer
 						begin
 							ichf <= 1'b0;
 							imb <= imb + 1;
+							buffer_FULL <= 1'b1;
 							// assert (isubmb!=osubmb || ochf || ox>ix || imb==omb) else $error("xbuffer overflow? severity ERROR");
+						end
+						else
+						begin
+							buffer_FULL <= 1'b0;
 						end
 					end
 					else 
 					begin
 						ix <= ix + 1;
+						buffer_FULL <= 1'b0;
 					end 
 				end
 				else if (!ichdc) 
 				begin
+					buffer_FULL <= 1'b0;
 					ix <= ix + 1;
 					if (ix==15) 
 					begin
@@ -240,7 +279,15 @@ module h264buffer
 						end
 					end 
 				end
+				else
+				begin
+					buffer_FULL <= 1'b0;
+				end
 			end
+		end
+		else
+		begin
+			buffer_FULL <= 1'b0;
 		end
 
 		if (!VALIDI && !NEWSLICE) 
