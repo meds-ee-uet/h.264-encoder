@@ -8,35 +8,37 @@ module controller_me
     input  logic       rst_n, 
     input  logic       clk, 
     input  logic       start,
-    output logic       ready,
-    output logic       valid,
+    output logic       readyi,
+    output logic       comp_en,
     output logic       en_cpr, 
     output logic       en_spr,
     output logic       en_ram,
-    output logic       done,
+    input  logic       readyo,
+    output logic       valido,
     output logic [5:0] addr, //output logic [5:0] addr [MACRO_DIM:0] Try
     output logic [5:0] amt,
     output logic [1:0] sel
 );
 
-    localparam S0 = 3'b000;
-    localparam S1 = 3'b001;
-    localparam S2 = 3'b010;
-    localparam S3 = 3'b011;
-    localparam S4 = 3'b100;
-    localparam S5 = 3'b101;
-    localparam S6 = 3'b110;
-    localparam S7 = 3'b111;
+    localparam S0 = 4'b0000;
+    localparam S1 = 4'b0001;
+    localparam S2 = 4'b0010;
+    localparam S3 = 4'b0011;
+    localparam S4 = 4'b0100;
+    localparam S5 = 4'b0101;
+    localparam S6 = 4'b0110;
+    localparam S7 = 4'b0111;
+    localparam S8 = 4'b1000;
 
     logic [5:0] count;
     logic       en_count_inc;
     logic       en_count_dec;
-    logic       set_to_16;
-    logic       set_to_31;
+    logic       set_to_macro;
+    logic       set_to_bounds;
     logic       rst_count;
 
-    logic [2:0] state;
-    logic [2:0] next_state;
+    logic [3:0] state;
+    logic [3:0] next_state;
 
     //State Machine
 
@@ -58,7 +60,7 @@ module controller_me
         case(state)
             S0: 
             begin
-                done = 0;
+                // valido = 0;
                 if(start)
                 begin
                     next_state = S1;
@@ -107,10 +109,10 @@ module controller_me
             end
             S5:
             begin
-                if(amt > SEARCH_DIM-MACRO_DIM)
+                if(amt == SEARCH_DIM-MACRO_DIM)
                 begin
-                    next_state = S0;
-                    done = 1;
+                    next_state = S8;
+                    // valido = 1;
                 end
                 else
                 begin
@@ -130,15 +132,30 @@ module controller_me
             end
             S7:
             begin
-                if(amt > SEARCH_DIM-MACRO_DIM)
+                if(amt == SEARCH_DIM-MACRO_DIM)
                 begin
-                    next_state = S0;
-                    done = 1;
+                    next_state = S8;
+                    // valido = 1;
                 end
                 else
                 begin
                     next_state = S4;
                 end
+            end
+            S8:
+            begin
+                if (valido && readyo)
+                begin
+                    next_state = S0;
+                end
+                else
+                begin
+                    next_state = S8;
+                end
+            end
+            default:
+            begin
+                next_state = S0;
             end
         endcase
     end
@@ -148,8 +165,9 @@ module controller_me
         case(state)
             S0: // Reset State
             begin
-                ready     = 1;
-                valid     = 0;
+                valido    = 0;
+                readyi    = 1;
+                comp_en   = 0;
                 en_cpr    = 0;
                 en_spr    = 0;
                 rst_count = 1;
@@ -158,8 +176,9 @@ module controller_me
             end
             S1: // CPR Load State
             begin
-                ready        = 0;
-                valid        = 0;
+                valido       = 0;
+                readyi       = 0;
+                comp_en      = 0;
                 en_cpr       = 1;
                 en_spr       = 0;
                 rst_count    = 0;
@@ -170,8 +189,9 @@ module controller_me
             end
             S2: // Counter Reset State
             begin 
-                ready     = 0;
-                valid     = 0;
+                valido    = 0;
+                readyi    = 0;
+                comp_en   = 0;
                 en_cpr    = 0;
                 en_spr    = 0;
                 rst_count = 1;
@@ -179,8 +199,9 @@ module controller_me
             end
             S3: // SPR Load State
             begin 
-                ready        = 0;
-                valid        = 0;
+                valido       = 0;
+                readyi       = 0;
+                comp_en      = 0;
                 en_cpr       = 0;
                 en_spr       = 1;
                 rst_count    = 0;
@@ -191,61 +212,118 @@ module controller_me
             end
             S4: // Upshift State
             begin 
-                ready        = 0;
-                valid        = 1;
-                en_cpr       = 0;
-                en_spr       = 1;
-                rst_count    = 0;
-                en_count_inc = 1;
-                en_count_dec = 0;
-                set_to_16    = 0;
-                set_to_31    = 0;
-                sel          = 1;
-                en_ram       = 1;
+                valido          = 0;
+                readyi          = 0;
+                comp_en         = 1;
+                en_cpr          = 0;
+                en_spr          = 1;
+                rst_count       = 0;
+                en_count_inc    = 1;
+                en_count_dec    = 0;
+                set_to_macro    = 0;
+                set_to_bounds   = 0;
+                sel             = 1;
+                en_ram          = 1;
             end
             S5: // Leftshift after Up State 
             begin
-                ready        = 0;
-                valid        = 1;
-                en_cpr       = 0;
-                en_spr       = 1;
-                rst_count    = 0;
-                en_count_inc = 0;
-                en_count_dec = 0;
-                set_to_16    = 0;
-                set_to_31    = 1;
-                sel          = 2;
-                amt          = amt + 1;
-                en_ram       = 0;
+                if(amt == SEARCH_DIM-MACRO_DIM)
+                begin
+                    valido          = 0;
+                    readyi          = 0;
+                    comp_en         = 0;
+                    en_cpr          = 0;
+                    en_spr          = 0;
+                    rst_count       = 0;
+                    en_count_inc    = 0;
+                    en_count_dec    = 0;
+                    set_to_macro    = 0;
+                    set_to_bounds   = 0;
+                    sel             = 0;
+                    amt             = amt;
+                    en_ram          = 0;
+                end
+                else
+                begin
+                    valido          = 0;
+                    readyi          = 0;
+                    comp_en         = 1;
+                    en_cpr          = 0;
+                    en_spr          = 1;
+                    rst_count       = 0;
+                    en_count_inc    = 0;
+                    en_count_dec    = 0;
+                    set_to_macro    = 0;
+                    set_to_bounds   = 1;
+                    sel             = 2;
+                    amt             = amt + 1;
+                    en_ram          = 0;
+                end
             end
             S6: // Downshift State
             begin
-                ready        = 0;
-                valid        = 1;
-                en_cpr       = 0;
-                en_spr       = 1;
-                rst_count    = 0;
-                en_count_inc = 0;
-                en_count_dec = 1;
-                set_to_16    = 0;
-                set_to_31    = 0;
-                sel          = 0;
-                en_ram       = 1;
+                valido          = 0;
+                readyi          = 0;
+                comp_en         = 1;
+                en_cpr          = 0;
+                en_spr          = 1;
+                rst_count       = 0;
+                en_count_inc    = 0;
+                en_count_dec    = 1;
+                set_to_macro    = 0;
+                set_to_bounds   = 0;
+                sel             = 0;
+                en_ram          = 1;
             end
             S7: // Leftshift after Down State
             begin
-                ready        = 0;
-                valid        = 1;
-                en_cpr       = 0;
-                en_spr       = 1;
-                rst_count    = 0;
-                en_count_inc = 0;
-                en_count_dec = 0;
-                set_to_16    = 1;
-                set_to_31    = 0;
-                sel          = 2;
-                amt          = amt + 1;
-                en_ram       = 0;
+                if(amt == SEARCH_DIM-MACRO_DIM)
+                begin
+                    valido          = 0;
+                    readyi          = 0;
+                    comp_en         = 0;
+                    en_cpr          = 0;
+                    en_spr          = 0;
+                    rst_count       = 0;
+                    en_count_inc    = 0;
+                    en_count_dec    = 0;
+                    set_to_macro    = 0;
+                    set_to_bounds   = 0;
+                    sel             = 0;
+                    amt             = amt;
+                    en_ram          = 0;
+                end
+                else
+                begin
+                    valido          = 0;
+                    readyi          = 0;
+                    comp_en         = 1;
+                    en_cpr          = 0;
+                    en_spr          = 1;
+                    rst_count       = 0;
+                    en_count_inc    = 0;
+                    en_count_dec    = 0;
+                    set_to_macro    = 1;
+                    set_to_bounds   = 0;
+                    sel             = 2;
+                    amt             = amt + 1;
+                    en_ram          = 0;
+                end
+            end
+            S8:
+            begin
+                valido              = 1;
+                readyi              = 0;
+                comp_en             = 0;
+                en_cpr              = 0;
+                en_spr              = 0;
+                rst_count           = 0;
+                en_count_inc        = 0;
+                en_count_dec        = 0;
+                set_to_macro        = 0;
+                set_to_bounds       = 0;
+                amt                 = amt;
+                en_ram              = 0;
             end
         endcase
     end
@@ -264,13 +342,13 @@ module controller_me
         begin
             count <= count - 1;
         end
-        else if(set_to_16)
+        else if(set_to_macro)
         begin
-            count <= 16;
+            count <= MACRO_DIM;
         end
-        else if(set_to_31)
+        else if(set_to_bounds)
         begin
-            count <= 31;
+            count <= SEARCH_DIM - MACRO_DIM - 1;
         end
     end
 

@@ -10,7 +10,7 @@ module datapath_me #
     input  logic [5:0]   amt,
     input  logic         en_spr,
     input  logic         en_cpr,
-    input  logic         valid,
+    input  logic         comp_en,
     input  logic [1:0 ]  sel,
     input  logic [7:0 ]  pixel_spr_in [0:MACRO_DIM  ],
     input  logic [7:0 ]  pixel_cpr_in [0:MACRO_DIM-1],
@@ -91,7 +91,7 @@ module datapath_me #
     (
         .clk     ( clk      ),
         .rst_n   ( rst_n    ),
-        .valid   ( valid    ),
+        .comp_en ( comp_en  ),
         .addr    ( addr     ),
         .amt     ( amt      ),
         .sad     ( wire_sad ),

@@ -2,7 +2,7 @@ module comparator
 (
     input  logic        clk,
     input  logic        rst_n,
-    input  logic        valid,
+    input  logic        comp_en,
     input  logic [5:0]  addr,
     input  logic [5:0]  amt,
     input  logic [15:0] sad, 
@@ -20,7 +20,7 @@ module comparator
         begin
             if (sad < min_sad) 
             begin
-                if(valid)
+                if(comp_en)
                 begin
                     min_sad <= sad;
                     mv_x    <= addr;

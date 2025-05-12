@@ -9,10 +9,10 @@ module me #
     input  logic        start,
     input  logic [7:0]  pixel_spr_in [0:MACRO_DIM],
     input  logic [7:0]  pixel_cpr_in [0:MACRO_DIM-1],
-    output logic        ready,
-    output logic        valid, 
+    output logic        readyi,
     output logic        en_ram,
-    output logic        done,
+    input  logic        readyo,
+    output logic        valido,
     output logic [5:0]  addr,
     output logic [5:0]  amt,
     output logic [5:0]  mv_x,
@@ -35,7 +35,7 @@ module me #
         .addr               ( addr               ),
         .en_spr             ( en_spr             ),
         .en_cpr             ( en_cpr             ),
-        .valid              ( valid              ),
+        .comp_en            ( comp_en            ),
         .sel                ( sel                ),
         .pixel_spr_in       ( pixel_spr_in       ),
         .pixel_cpr_in       ( pixel_cpr_in       ),
@@ -51,18 +51,19 @@ module me #
     )
     ins_controller_me
     (
-        .rst_n  ( rst_n  ), 
-        .clk    ( clk    ), 
-        .start  ( start  ),
-        .ready  ( ready  ),
-        .valid  ( valid  ),
-        .en_cpr ( en_cpr ), 
-        .en_spr ( en_spr ),
-        .en_ram ( en_ram ),
-        .done   ( done   ),
-        .addr   ( addr   ),
-        .amt    ( amt    ),
-        .sel    ( sel    )
+        .rst_n      ( rst_n     ), 
+        .clk        ( clk       ), 
+        .start      ( start     ),
+        .readyi     ( readyi    ),
+        .comp_en    ( comp_en   ),
+        .en_cpr     ( en_cpr    ), 
+        .en_spr     ( en_spr    ),
+        .en_ram     ( en_ram    ),
+        .readyo     ( readyo    ),
+        .valido     ( valido    ),
+        .addr       ( addr      ),
+        .amt        ( amt       ),
+        .sel        ( sel       )
     );
 
 endmodule

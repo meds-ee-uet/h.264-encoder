@@ -53,7 +53,8 @@ module tb_me #
     logic        clk;
     logic        start;
     logic        en_ram;
-    logic        done;
+    logic        valido;
+    logic        readyo;
     logic [5:0]  addr;
     logic [5:0]  amt;
     logic [5:0]  mv_y;
@@ -82,10 +83,11 @@ module tb_me #
         .start              ( start              ),
         .pixel_spr_in       ( pixel_spr_in       ),
         .pixel_cpr_in       ( pixel_cpr_in       ),
-        .ready              ( ready              ),
-        .valid              ( valid              ),
+        .readyi             ( readyi             ),
+        // .valid              ( valid              ),
         .en_ram             ( en_ram             ),
-        .done               ( done               ),
+        .valido             ( valido             ),
+        .readyo             ( readyo             ),
         .addr               ( addr               ),
         .amt                ( amt                ),
         .mv_x               ( mv_x               ),
@@ -131,6 +133,7 @@ module tb_me #
     initial
     begin
         rst_n = 0;
+        readyo = 0;
         start = 0;
         @(posedge clk);
         rst_n = 1;
@@ -145,8 +148,22 @@ module tb_me #
 
 
         //#12000 
-        wait (done == 1)
-        @(posedge clk);
+        wait (valido == 1)
+        repeat (10) @(posedge clk);
+        readyo = 1;
+
+        while (1)
+        begin
+            if (valido)
+            begin
+                @(posedge clk);
+                readyo = 0;
+                break;
+            end
+            @(posedge clk);
+        end
+
+        repeat (10) @(posedge clk);
         $finish;
     end
 
