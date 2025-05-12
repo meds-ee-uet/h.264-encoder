@@ -545,6 +545,31 @@ module h264topsim(input bit clk2);
 	assign dequantise_ENABLE = quantise_VALID & ~quantise_DCCO;
 	assign dequantise_ZIN = !invdctransform_VALID ? $signed(quantise_ZOUT) : $signed(invdctransform_YYOUT);
 
+    logic inter_flag_qtz2deqtz;     // quantize to dequantize
+    logic flag_set1 = '0;           // indicates that inter flag is set for current data
+
+    always_ff @(posedge clk2)
+    begin
+        if (dequantise_ENABLE)
+        begin
+            if (!flag_set1)
+            begin
+                inter_flag_qtz2deqtz <= inter_flag;
+                flag_set1 <= 1'b1;
+            end
+            else
+            begin
+                inter_flag_qtz2deqtz <= inter_flag_qtz2deqtz;
+                flag_set1 <= flag_set1;
+            end
+        end
+        else
+        begin
+            inter_flag_qtz2deqtz <= inter_flag_qtz2deqtz;
+            flag_set1 <= 1'b0;
+        end
+    end
+
     h264invtransform invtransform
 	(
 		.CLK                ( clk2                      ),
@@ -554,9 +579,35 @@ module h264topsim(input bit clk2);
 		.XOUT               ( invtransform_XOU          )
 	);
 
+    logic inter_flag_deqtz2invtfm;  // dequantize to inv transform
+    logic flag_set2 = '0;           // indicates that inter flag is set for current data
+
+    always_ff @(posedge clk2)
+    begin
+        if (dequantise_VALID)
+        begin
+            if (!flag_set2)
+            begin
+                inter_flag_deqtz2invtfm <= inter_flag_qtz2deqtz;
+                flag_set2 <= 1'b1;
+            end
+            else
+            begin
+                inter_flag_deqtz2invtfm <= inter_flag_deqtz2invtfm;
+                flag_set2 <= flag_set2;
+            end
+        end
+        else
+        begin
+            inter_flag_deqtz2invtfm <= inter_flag_deqtz2invtfm;
+            flag_set2 <= 1'b0;
+        end
+    end
+
     h264recon recon
     (
         .CLK2               ( clk2                      ), 
+        .inter_flag         ( inter_flag_invtfm2recon   ),
         .NEWSLICE           ( top_NEWSLICE              ), 
         .STROBEI            ( invtransform_VALID        ), 
         .DATAI              ( invtransform_XOUT         ),
@@ -567,6 +618,31 @@ module h264topsim(input bit clk2);
         .CSTROBEO           ( recon_FBCSTROBE           ), 
         .DATAO              ( recon_FEEDB               )
     );
+
+    logic inter_flag_invtfm2recon;  // inv transform to reconstruct
+    logic flag_set3 = '0;           // indicates that inter flag is set for current data
+
+    always_ff @(posedge clk2)
+    begin
+        if (invtransform_VALID)
+        begin
+            if (!flag_set3)
+            begin
+                inter_flag_invtfm2recon <= inter_flag_deqtz2invtfm;
+                flag_set3 <= 1'b1;
+            end
+            else
+            begin
+                inter_flag_invtfm2recon <= inter_flag_invtfm2recon;
+                flag_set3 <= flag_set3;
+            end
+        end
+        else
+        begin
+            inter_flag_invtfm2recon <= inter_flag_invtfm2recon;
+            flag_set3 <= 1'b0;
+        end
+    end
 
     h264buffer xbuffer
     (
