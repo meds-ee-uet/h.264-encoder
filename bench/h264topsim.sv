@@ -8,11 +8,17 @@ module h264topsim(input bit clk2);
     localparam IMGBITS      = 8;
     localparam INITQP       = 28;
 
+    import "DPI-C" context task dpi_open_file(input string filename);
+    import "DPI-C" context task dpi_write_byte(input byte c);
+    import "DPI-C" context task dpi_close_file();
+
 	// Verbose Switches
 
 	bit computesnr = 1;
 	bit dumprecon  = 1;
-
+    
+    int count_fram = 0;
+    int random_range;
 	// File Handles
     
 	integer inb, outb, recb;
@@ -166,6 +172,18 @@ module h264topsim(input bit clk2);
     logic nop2; //No operation
     logic nop3; //No operation
     logic nop4; //No operation
+
+    /////////////////////////////////////
+    // Dump VCD
+    /////////////////////////////////////
+    `ifdef vcd
+        initial
+        begin    
+            $display("VCD logging started");
+            $dumpfile("dump.vcd");
+            $dumpvars(0, tb);
+        end
+    `endif
 
     // Mode Decision
     integer frame_distance = 3;
@@ -407,48 +425,55 @@ module h264topsim(input bit clk2);
         .DONE(tobytes_DONE)
     );
 
-    // Inter-Prediction
-    localparam MACRO_DIM  = 16;
-    localparam SEARCH_DIM = 48;
-    localparam PORT_WIDTH = MACRO_DIM + 1;
+    // // Inter-Prediction
+    // localparam MACRO_DIM  = 16;
+    // localparam SEARCH_DIM = 48;
+    // localparam PORT_WIDTH = MACRO_DIM + 1;
 
-    logic        rst_n;
-    //logic        clk;
-    logic        start;
-    logic        en_ram;
-    logic        done;
-    logic [5:0]  addr;
-    logic [5:0]  amt;
-    logic [5:0]  mv_y;
-    logic [5:0]  mv_x;
-    logic [7:0]  pixel_spr_in [0:MACRO_DIM];
-    logic [7:0]  pixel_cpr_in [0:MACRO_DIM-1];
-    logic [15:0] min_sad;
+    // logic        rst_n;
+    // //logic        clk;
+    // logic        start;
+    // logic        en_ram;
+    // logic        done;
+    // logic [5:0]  addr;
+    // logic [5:0]  amt;
+    // logic [5:0]  mv_y;
+    // logic [5:0]  mv_x;
+    // logic [7:0]  pixel_spr_in [0:MACRO_DIM];
+    // logic [7:0]  pixel_cpr_in [0:MACRO_DIM-1];
+    // logic [15:0] min_sad;
 
-    logic [15:0] trans_addr [MACRO_DIM:0];
+    // logic [15:0] trans_addr [MACRO_DIM:0];
 
-    me # 
-    (
-        .MACRO_DIM  ( MACRO_DIM  ),
-        .SEARCH_DIM ( SEARCH_DIM )
-    )
-    ins_me
-    (
-        .rst_n              ( rst_n              ),
-        .clk                ( clk2               ),
-        .start              ( start              ),
-        .pixel_spr_in       ( pixel_spr_in       ),
-        .pixel_cpr_in       ( pixel_cpr_in       ),
-        .ready              ( ready              ),
-        .valid              ( valid              ),
-        .en_ram             ( en_ram             ),
-        .done               ( done               ),
-        .addr               ( addr               ),
-        .amt                ( amt                ),
-        .mv_x               ( mv_x               ),
-        .mv_y               ( mv_y               ),
-        .min_sad            ( min_sad            )
-    );
+    // me # 
+    // (
+    //     .MACRO_DIM  ( MACRO_DIM  ),
+    //     .SEARCH_DIM ( SEARCH_DIM )
+    // )
+    // ins_me
+    // (
+    //     .rst_n              ( rst_n              ),
+    //     .clk                ( clk2               ),
+    //     .start              ( start              ),
+    //     .pixel_spr_in       ( pixel_spr_in       ),
+    //     .pixel_cpr_in       ( pixel_cpr_in       ),
+    //     .ready              ( ready              ),
+    //     .valid              ( valid              ),
+    //     .en_ram             ( en_ram             ),
+    //     .done               ( done               ),
+    //     .addr               ( addr               ),
+    //     .amt                ( amt                ),
+    //     .mv_x               ( mv_x               ),
+    //     .mv_y               ( mv_y               ),
+    //     .min_sad            ( min_sad            )
+    // );
+
+    always_ff @(posedge clk) begin
+        if(top_NEWSLICE)
+            count_fram <= count_fram + 1;
+        else
+            count_fram <= count_fram; 
+    end
 
    	assign tobytes_VE = header_VALID ? {5'b00000, header_VE} : cavlc_VALID ? cavlc_VE : {1'b0, 24'h030080};
 	assign tobytes_VL = header_VALID ? header_VL : cavlc_VALID ? cavlc_VL : 5'b01000;
@@ -686,41 +711,45 @@ module h264topsim(input bit clk2);
                 end
                 @(posedge clk2);
             end  
-            // Inter-Prediction
-            if (ready == 1)
-            begin
-                //start = 0;
-                integer l, f;
-                for(l = 0; l < MACRO_DIM; l++)
-                begin
-                    if (en_ram)
-                    begin
-                        pixel_cpr_in[l] = yvideo[l][addr];
-                    end
-                end
-                for(l = 0; l < PORT_WIDTH; l++)
-                begin
-                    if (en_ram)   
-                    begin         
-                        pixel_spr_in[l] = yrvideo[(l+amt)%PORT_WIDTH][trans_addr[(l+amt)%PORT_WIDTH]]; 
-                    end
-                end
-                for (f = 0; f < PORT_WIDTH; f++) 
-                begin
-                    if (f < amt) 
-                    begin
-                        trans_addr[f] = addr + SEARCH_DIM;
-                    end
-                    else
-                    begin
-                        trans_addr[f] = addr;
-                    end
-                end
-                @(posedge clk2);
-                start = 1;
+            // // Inter-Prediction
+            // if (ready == 1)
+            // begin
+            //     //start = 0;
+            //     integer l, f;
+            //     for(l = 0; l < MACRO_DIM; l++)
+            //     begin
+            //         if (en_ram)
+            //         begin
+            //             // pixel_cpr_in[l] = yvideo[l][addr];
+            //         end
+            //     end
+            //     for(l = 0; l < PORT_WIDTH; l++)
+            //     begin
+            //         if (en_ram)   
+            //         begin         
+            //         //    pixel_spr_in[l] = yrvideo[(l+amt)%PORT_WIDTH][trans_addr[(l+amt)%PORT_WIDTH]]; 
+            //         end
+            //     end
+            //     for (f = 0; f < PORT_WIDTH; f++) 
+            //     begin
+            //         if (f < amt) 
+            //         begin
+            //             trans_addr[f] = addr + SEARCH_DIM;
+            //         end
+            //         else
+            //         begin
+            //             trans_addr[f] = addr;
+            //         end
+            //     end
+            //     @(posedge clk2);
+            //     start = 1;
+            // end
+            if (count_fram == 1)
+                $display("Done push of data from intra4x4 and intra8x8cc");
+            else begin
+                random_range = $urandom_range(1, 100);
+                $display("Done push of data from intra %d percent and inter %d percent %d", random_range, 100-random_range,count_fram);
             end
-
-            $display("Done push of data into intra4x4 and intra8x8cc");
             if (!xbuffer_DONE)
             begin
                 wait (xbuffer_DONE == 1);
@@ -746,7 +775,11 @@ module h264topsim(input bit clk2);
 		$display("%2d frames processed", framenum);
 
 		$fclose(inb);
-		$fclose(outb);
+        `ifdef VERILATOR
+            dpi_close_file();
+        `else
+            $fclose(outb);
+        `endif
 		$fclose(recb);
 
 		$finish;
@@ -756,6 +789,41 @@ module h264topsim(input bit clk2);
     localparam hd = 200'haa0000000167420028da0582590000000168ce388000000001;
     localparam hdsize = 24;
 
+
+`ifdef VERILATOR
+    initial 
+    begin
+        dpi_open_file("sample_out.264");
+
+        // Write header
+        for (int i = hdsize-1; i >= 0; i--) 
+        begin
+            c = hd[8*i +: 8];
+            dpi_write_byte(c);
+        end
+
+        // Loop to write runtime bytes
+        forever 
+        begin
+            if (tobytes_STROBE) 
+            begin
+                dpi_write_byte(tobytes_BYTE);
+                count = count + 1;
+            end
+
+            if (tobytes_DONE) 
+            begin
+                count = 0;
+                dpi_write_byte(8'b00000000);
+                dpi_write_byte(8'b00000000);
+                dpi_write_byte(8'b00000000);
+                dpi_write_byte(8'b00000001);
+            end
+
+            @(posedge clk);
+        end
+    end
+`else
     initial
     begin
         outb = $fopen("sample_out.264", "wb");
@@ -765,6 +833,7 @@ module h264topsim(input bit clk2);
             c = hd[ 8*i +: 8 ];
             $fwrite(outb, "%c", c);
         end
+
         forever
         begin
             if (tobytes_STROBE)
@@ -772,6 +841,7 @@ module h264topsim(input bit clk2);
                 $fwrite(outb, "%c", tobytes_BYTE);
                 count = count + 1;
             end
+
             if (tobytes_DONE)
             begin
                 count = 0;
@@ -780,9 +850,11 @@ module h264topsim(input bit clk2);
                 $fwrite(outb, "%c", 8'b00000000);
                 $fwrite(outb, "%c", 8'b00000001);
 		    end
-		@(posedge clk);
+
+            @(posedge clk);
 	    end
     end
+`endif
 
 	always_ff @(posedge clk2)
 	begin
