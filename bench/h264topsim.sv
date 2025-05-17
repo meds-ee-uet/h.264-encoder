@@ -2,7 +2,7 @@ module h264topsim(input bit clk2);
 
     localparam IMGWIDTH     = 352;
     localparam IMGHEIGHT    = 288;
-    localparam MAXFRAMES    = 300;
+    localparam MAXFRAMES    = 2;
     localparam MAXQP        = 28;
     localparam IWBITS       = 9;
     localparam IMGBITS      = 8;
@@ -10,7 +10,7 @@ module h264topsim(input bit clk2);
 
     // Inter-PrediSEARCH_DIMction
     localparam MACRO_DIM  = 16;
-    localparam SEARCH_DIM = 18;
+    localparam SEARCH_DIM = 48;
     localparam PORT_WIDTH = MACRO_DIM + 1;
 
     import "DPI-C" context task dpi_open_file(input string filename);
@@ -264,6 +264,10 @@ module h264topsim(input bit clk2);
     logic [7:0]  pixel_cpr_in [0:MACRO_DIM-1];
     logic [15:0] min_sad;
 
+    logic inter_me_READYI;
+    logic inter_me_READYO;
+    logic inter_me_VALIDO;
+
     logic [15:0] trans_addr [MACRO_DIM:0];
 
     me # 
@@ -304,15 +308,9 @@ module h264topsim(input bit clk2);
                     inter_mvx <= '0;
                     inter_mvy <= '0;
                 end
-            else if (framenum == 1)
-                begin
-                    inter_flag_valid <= 1;
-                    inter_flag <= 0;
-                    inter_mvx <= '0;
-                    inter_mvy <= '0;
-                end
             else if (inter_me_VALIDO && inter_me_READYO)
                 begin
+                    // $display("Inter/Intra Mode Selected at Inter Module Output");
                     inter_flag_valid <= 1;
                     inter_flag <= framenum == 1 ? 0 : (min_sad <= 1000);
                     inter_mvx  <= mv_x;
@@ -1106,6 +1104,11 @@ module h264topsim(input bit clk2);
                 // Inter-Prediction Logic
                 if (inter_me_READYI) 
                     begin
+                        @(posedge clk2);
+
+                        top_NEWLINE = 0;
+                        top_NEWSLICE = 0;
+
                         start = 1;
                     end
                 else
@@ -1116,6 +1119,9 @@ module h264topsim(input bit clk2);
                 // Load macroblock data into pixel_cpr_in
                 if (en_ram)
                 begin
+                    top_NEWLINE = 0;
+                    top_NEWSLICE = 0;
+
                     if (en_cpr)
                     begin
                         for (l = 0; l < MACRO_DIM - 1; l++)

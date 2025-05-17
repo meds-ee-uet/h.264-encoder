@@ -1,7 +1,7 @@
 module datapath_me #
 (
-    parameter MACRO_DIM  = 16,
-    parameter SEARCH_DIM = 48
+    parameter MACRO_DIM,
+    parameter SEARCH_DIM
 ) 
 (
     input  logic         rst_n,

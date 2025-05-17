@@ -1,8 +1,8 @@
 module controller_me
 #
 (
-    parameter MACRO_DIM  = 16,
-    parameter SEARCH_DIM = 48
+    parameter MACRO_DIM,
+    parameter SEARCH_DIM
 ) 
 (
     input  logic       rst_n, 
@@ -33,8 +33,8 @@ module controller_me
     logic [5:0] count;
     logic       en_count_inc;
     logic       en_count_dec;
-    logic       set_to_macro;
-    logic       set_to_bounds;
+    logic       sel_to_start;
+    logic       sel_to_end;
     logic       rst_count;
 
     logic [3:0] state;
@@ -60,7 +60,6 @@ module controller_me
         case(state)
             S0: 
             begin
-                // valido = 0;
                 if(start)
                 begin
                     next_state = S1;
@@ -98,7 +97,7 @@ module controller_me
             end
             S4:
             begin
-                if(count == SEARCH_DIM-MACRO_DIM)
+                if(count == SEARCH_DIM-1)
                 begin
                     next_state = S5;
                 end
@@ -109,10 +108,9 @@ module controller_me
             end
             S5:
             begin
-                if(amt == SEARCH_DIM-MACRO_DIM)
+                if(amt > SEARCH_DIM - MACRO_DIM)
                 begin
                     next_state = S8;
-                    // valido = 1;
                 end
                 else
                 begin
@@ -132,10 +130,9 @@ module controller_me
             end
             S7:
             begin
-                if(amt == SEARCH_DIM-MACRO_DIM)
+                if(amt > SEARCH_DIM - MACRO_DIM)
                 begin
                     next_state = S8;
-                    // valido = 1;
                 end
                 else
                 begin
@@ -144,7 +141,7 @@ module controller_me
             end
             S8:
             begin
-                if (valido && readyo)
+                if (readyo)
                 begin
                     next_state = S0;
                 end
@@ -220,96 +217,56 @@ module controller_me
                 rst_count       = 0;
                 en_count_inc    = 1;
                 en_count_dec    = 0;
-                set_to_macro    = 0;
-                set_to_bounds   = 0;
+                sel_to_start    = 0;
+                sel_to_end   = 0;
                 sel             = 1;
                 en_ram          = 1;
             end
             S5: // Leftshift after Up State 
             begin
-                if(amt == SEARCH_DIM-MACRO_DIM)
-                begin
-                    valido          = 0;
-                    readyi          = 0;
-                    comp_en         = 0;
-                    en_cpr          = 0;
-                    en_spr          = 0;
-                    rst_count       = 0;
-                    en_count_inc    = 0;
-                    en_count_dec    = 0;
-                    set_to_macro    = 0;
-                    set_to_bounds   = 0;
-                    sel             = 0;
-                    amt             = amt;
-                    en_ram          = 0;
-                end
-                else
-                begin
-                    valido          = 0;
-                    readyi          = 0;
-                    comp_en         = 1;
-                    en_cpr          = 0;
-                    en_spr          = 1;
-                    rst_count       = 0;
-                    en_count_inc    = 0;
-                    en_count_dec    = 0;
-                    set_to_macro    = 0;
-                    set_to_bounds   = 1;
-                    sel             = 2;
-                    amt             = amt + 1;
-                    en_ram          = 0;
-                end
+                readyi        = 0;
+                comp_en        = 1;
+                en_cpr       = 0;
+                en_spr       = 1;
+                rst_count    = 0;
+                en_count_inc = 0;
+                en_count_dec = 0;
+                sel_to_start    = 0;
+                sel_to_end    = 1;
+                sel          = 2;
+                amt          = amt + 1;
+                en_ram       = 0;
             end
             S6: // Downshift State
             begin
-                valido          = 0;
-                readyi          = 0;
-                comp_en         = 1;
-                en_cpr          = 0;
-                en_spr          = 1;
-                rst_count       = 0;
-                en_count_inc    = 0;
-                en_count_dec    = 1;
-                set_to_macro    = 0;
-                set_to_bounds   = 0;
-                sel             = 0;
-                en_ram          = 1;
+                readyi       = 0;
+                valido       = 0;
+                comp_en      = 1;
+                en_cpr       = 0;
+                en_spr       = 1;
+                rst_count    = 0;
+                en_count_inc = 0;
+                en_count_dec = 1;
+                sel          = 0;
+                en_ram       = 1;
             end
             S7: // Leftshift after Down State
             begin
-                if(amt == SEARCH_DIM-MACRO_DIM)
-                begin
-                    valido          = 0;
-                    readyi          = 0;
-                    comp_en         = 0;
-                    en_cpr          = 0;
-                    en_spr          = 0;
-                    rst_count       = 0;
-                    en_count_inc    = 0;
-                    en_count_dec    = 0;
-                    set_to_macro    = 0;
-                    set_to_bounds   = 0;
-                    sel             = 0;
-                    amt             = amt;
-                    en_ram          = 0;
-                end
-                else
-                begin
-                    valido          = 0;
-                    readyi          = 0;
-                    comp_en         = 1;
-                    en_cpr          = 0;
-                    en_spr          = 1;
-                    rst_count       = 0;
-                    en_count_inc    = 0;
-                    en_count_dec    = 0;
-                    set_to_macro    = 1;
-                    set_to_bounds   = 0;
-                    sel             = 2;
-                    amt             = amt + 1;
-                    en_ram          = 0;
-                end
+                readyi       = 0;
+                valido       = 0;
+                comp_en      = 1;
+                en_cpr       = 0;
+                en_spr       = 1;
+                rst_count    = 0;
+                en_count_inc = 0;
+                en_count_dec = 0;
+                sel_to_start = 1;
+                sel_to_end = 0;
+                sel          = 2;
+                amt          = amt + 1;
+                en_ram       = 0;
             end
+
             S8:
             begin
                 valido              = 1;
@@ -320,8 +277,8 @@ module controller_me
                 rst_count           = 0;
                 en_count_inc        = 0;
                 en_count_dec        = 0;
-                set_to_macro        = 0;
-                set_to_bounds       = 0;
+                sel_to_start        = 0;
+                sel_to_end       = 0;
                 amt                 = amt;
                 en_ram              = 0;
             end
@@ -342,13 +299,13 @@ module controller_me
         begin
             count <= count - 1;
         end
-        else if(set_to_macro)
+        else if(sel_to_start)
         begin
             count <= MACRO_DIM;
         end
-        else if(set_to_bounds)
+        else if(sel_to_end)
         begin
-            count <= SEARCH_DIM - MACRO_DIM - 1;
+            count <= SEARCH_DIM - 1;
         end
     end
 

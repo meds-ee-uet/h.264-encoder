@@ -64,7 +64,7 @@ compile:
 	@echo "Creating work library..."
 	@echo "Compiling source files..."
 	vlog $(src)
-wave:
+wave: compile
 	@echo "Running simulation and Wave..."
 	vsim -L -voptargs=+acc $(top_vsim) -do "add wave -radix Unsigned sim:/$(top_vsim)/*; run 2000"
 simulate:
