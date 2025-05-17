@@ -32,6 +32,7 @@ module h264topsim(input bit clk2);
 
     integer framenum = 0;
     integer x, y, cx, cy, cuv, i, j, w, count, x_copy, y_copy;
+    integer up_pad,down_pad,left_pad,right_pad;
     integer l, f;
     integer x_idx, y_idx;
     integer row, col;
@@ -1104,16 +1105,15 @@ module h264topsim(input bit clk2);
                         @(posedge clk2);
                     end
                 
-                integer up_pad,down_pad,left_pad,right_pad;
                 // Inter-Prediction Logic
                 if (inter_me_READYI == 1 && !inter_flag_valid) 
-                    begin                    
+                    begin
                         // Load macroblock data into pixel_cpr_in
                         if (en_ram)
                         begin
                             if (en_cpr)
                             begin
-                                for (l = 0; l < MACRO_DIM; l++) 
+                                for (l = 0; l < MACRO_DIM - 1; l++)
                                 begin
                                      pixel_cpr_in[l] = yvideo[mb_x + addr][mb_y + amt];
                                 end
@@ -1129,9 +1129,9 @@ module h264topsim(input bit clk2);
                                     right_pad   = ( $signed(mb_x + SEARCH_DIM - MACRO_DIM - addr ) > IMGWIDTH );
 
                                     if (up_pad || down_pad || left_pad || right_pad)
-                                        pixel_spr_in = '0;  // Zero Padding on Out of Bound Cases
+                                        pixel_spr_in[l] = '0;  // Zero Padding on Out of Bound Cases
                                     else
-                                        pixel_spr_in = yrvideo_ref[mb_x + SEARCH_DIM - MACRO_DIM - addr][mb_y + SEARCH_DIM - MACRO_DIM - amt];
+                                        pixel_spr_in[l] = yrvideo_ref[mb_x + SEARCH_DIM - MACRO_DIM - addr][mb_y + SEARCH_DIM - MACRO_DIM - amt];
                                 end
                             end
                         end
