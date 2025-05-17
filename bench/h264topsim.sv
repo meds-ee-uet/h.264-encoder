@@ -8,6 +8,11 @@ module h264topsim(input bit clk2);
     localparam IMGBITS      = 8;
     localparam INITQP       = 28;
 
+    // Inter-PrediSEARCH_DIMction
+    localparam MACRO_DIM  = 16;
+    localparam SEARCH_DIM = 18;
+    localparam PORT_WIDTH = MACRO_DIM + 1;
+
     import "DPI-C" context task dpi_open_file(input string filename);
     import "DPI-C" context task dpi_write_byte(input byte c);
     import "DPI-C" context task dpi_close_file();
@@ -26,7 +31,21 @@ module h264topsim(input bit clk2);
 	// Variables
 
     integer framenum = 0;
-    integer x, y, cx, cy, cuv, i, j, w, count;
+    integer x, y, cx, cy, cuv, i, j, w, count, x_copy, y_copy;
+    integer l, f;
+    integer x_idx, y_idx;
+    integer row, col;
+    integer x_idx_chroma, y_idx_chroma;
+
+
+    logic inter_flag_qtz2deqtz;     // quantize to dequantize
+    logic flag_set1 = '0;           // indicates that inter flag is set for current data
+    logic inter_flag_deqtz2invtfm;  // dequantize to inv transform
+    logic flag_set2 = '0;           // indicates that inter flag is set for current data
+    logic inter_flag_invtfm2recon;  // inv transform to reconstruct
+    logic flag_set3 = '0;           // indicates that inter flag is set for current data
+
+
     // Variables to track macroblock and search block positions
     integer mb_x, mb_y; // Current macroblock position (top-left corner)
     integer search_block_addr; // Absolute address of the search block in the buffer
@@ -71,6 +90,12 @@ module h264topsim(input bit clk2);
 	logic [1:0] intra4x4_XXO;
 	logic intra4x4_XXINC;
 	logic intra4x4_CHREADY;
+
+    logic inter_flag_valid;
+    logic inter_flag_reset;
+    logic inter_flag;
+    logic [11:0] inter_mvx;
+    logic [11:0] inter_mvy;
 
     //Intra8x8cc Wires
     logic intra8x8cc_READYI;
@@ -230,11 +255,6 @@ module h264topsim(input bit clk2);
     logic [7:0] search_block_reg_u[0:SEARCH_DIM/2-1][0:SEARCH_DIM/2-1];
     logic [7:0] search_block_reg_v[0:SEARCH_DIM/2-1][0:SEARCH_DIM/2-1];
 
-    // Inter-Prediction
-    localparam MACRO_DIM  = 16;
-    localparam SEARCH_DIM = 18;
-    localparam PORT_WIDTH = MACRO_DIM + 1;
-
     logic        rst_n;
     //logic        clk;
     logic        start;
@@ -275,18 +295,11 @@ module h264topsim(input bit clk2);
 
     assign inter_me_READYO = ~inter_flag_valid;
 
-    logic inter_flag_valid;
-    logic inter_flag_reset;
-    logic inter_flag;
-
-    logic [11:0] inter_mvx;
-    logic [11:0] inter_mvy;
-
     assign inter_flag_reset = xbuffer_FULL;
 
     always_ff @(posedge clk2)
         begin
-            if (NEWLINE || NEWSLICE || inter_flag_reset)
+            if (top_NEWLINE || top_NEWSLICE || inter_flag_reset)
                 begin
                     inter_flag_valid <= 0;
                     inter_flag <= 0;
@@ -387,6 +400,8 @@ module h264topsim(input bit clk2);
     )
     ins_mc
     (
+        .clk                ( clk2                  ),
+        .reset              ( top_NEWLINE           ),
         .ccin               ( inter_mc_CCIN         ),
         .ref_frame          ( inter_mc_REF          ),
         .curr_mb            ( inter_mc_CURR         ),
@@ -453,7 +468,7 @@ module h264topsim(input bit clk2);
         .YNOUT              ( coretransform_YNOUT   )
     );
 
-    assign coretransform_ENABLE = intra4x4_STROBEO || intra8x8cc_STROBEO || inter_mc_VAL;
+    assign coretransform_ENABLE = intra4x4_STROBEO || intra8x8cc_STROBEO || inter_mc_VALIDO;
 	// assign coretransform_XXIN = intra4x4_STROBEO ? intra4x4_DATAO : intra8x8cc_DATAO;
 	assign recon_BSTROBEI = intra4x4_STROBEO | intra8x8cc_STROBEO;
 	assign recon_BASEI = intra4x4_STROBEO ? intra4x4_BASEO : intra8x8cc_BASEO;
@@ -544,9 +559,6 @@ module h264topsim(input bit clk2);
 	assign dequantise_ENABLE = quantise_VALID & ~quantise_DCCO;
 	assign dequantise_ZIN = !invdctransform_VALID ? $signed(quantise_ZOUT) : $signed(invdctransform_YYOUT);
 
-    logic inter_flag_qtz2deqtz;     // quantize to dequantize
-    logic flag_set1 = '0;           // indicates that inter flag is set for current data
-
     always_ff @(posedge clk2)
     begin
         if (dequantise_ENABLE)
@@ -577,9 +589,6 @@ module h264topsim(input bit clk2);
 		.VALID              ( invtransform_VALID        ),
 		.XOUT               ( invtransform_XOU          )
 	);
-
-    logic inter_flag_deqtz2invtfm;  // dequantize to inv transform
-    logic flag_set2 = '0;           // indicates that inter flag is set for current data
 
     always_ff @(posedge clk2)
     begin
@@ -617,9 +626,6 @@ module h264topsim(input bit clk2);
         .CSTROBEO           ( recon_FBCSTROBE           ), 
         .DATAO              ( recon_FEEDB               )
     );
-
-    logic inter_flag_invtfm2recon;  // inv transform to reconstruct
-    logic flag_set3 = '0;           // indicates that inter flag is set for current data
 
     always_ff @(posedge clk2)
     begin
@@ -1061,7 +1067,7 @@ module h264topsim(input bit clk2);
                                     cy = cy + 4;
                                     if (cy % 8 == 0)
                                     begin
-                                        cy  = cyr - 8;
+                                        cy  = cy - 8;
                                         cuv = cuv + 1;
                                         if (cuv == 2)
                                         begin
@@ -1104,9 +1110,7 @@ module h264topsim(input bit clk2);
                 
                 // Inter-Prediction Logic
                 if (inter_me_READYI == 1 && !inter_flag_valid) 
-                    begin
-                        integer l, f;
-                    
+                    begin                    
                         // Load macroblock data into pixel_cpr_in
                         for (l = 0; l < MACRO_DIM; l++) 
                             begin
@@ -1121,7 +1125,6 @@ module h264topsim(input bit clk2);
                             begin
                                 if (en_ram) 
                                     begin
-                                        integer x_idx, y_idx;
                                         x_idx = (search_block_addr % IMGWIDTH) + l + amt;
                                         y_idx = (search_block_addr / IMGWIDTH);
                             
@@ -1136,7 +1139,6 @@ module h264topsim(input bit clk2);
                                             end
                             
                                         // Store the corresponding pixel in search_block_reg_y
-                                        integer row, col;
                                         row = l / SEARCH_DIM;
                                         col = l % SEARCH_DIM;
                             
@@ -1150,7 +1152,6 @@ module h264topsim(input bit clk2);
                                             end
                             
                                         // Chroma-specific logic for U and V components (YUV 4:2:0 FORMAT)
-                                        integer x_idx_chroma, y_idx_chroma;
                                         x_idx_chroma = (search_block_addr % (IMGWIDTH / 2)) + (l / 2) + (amt / 2);
                                         y_idx_chroma = (search_block_addr / (IMGWIDTH / 2));
                             
