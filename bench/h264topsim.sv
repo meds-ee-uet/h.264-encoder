@@ -306,6 +306,13 @@ module h264topsim(input bit clk2);
                     inter_mvx <= '0;
                     inter_mvy <= '0;
                 end
+            else if (framenum == 1)
+                begin
+                    inter_flag_valid <= 1;
+                    inter_flag <= 0;
+                    inter_mvx <= '0;
+                    inter_mvy <= '0;
+                end
             else if (inter_me_VALIDO && inter_me_READYO)
                 begin
                     inter_flag_valid <= 1;
@@ -496,7 +503,7 @@ module h264topsim(input bit clk2);
     (
         .CLK                ( clk2                      ), 
         .RESET              ( ~top_NEWSLICE             ),
-        .READYI             ( nop4                      ),
+        .READYI             ( nop3                      ),
         .ENABLE             ( dctransform_ENABLE        ),
         .XXIN               ( dctransform_XXIN          ), 
         .VALID              ( dctransform_VALIDO        ), 
@@ -587,7 +594,7 @@ module h264topsim(input bit clk2);
 		.ENABLE             ( dequantise_VALID          ),
 		.WIN                ( dequantise_WOUT           ),
 		.VALID              ( invtransform_VALID        ),
-		.XOUT               ( invtransform_XOU          )
+		.XOUT               ( invtransform_XOUT         )
 	);
 
     always_ff @(posedge clk2)

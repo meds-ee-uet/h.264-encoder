@@ -23,7 +23,9 @@ src := 	bench/*.sv									\
        	$(wildcard $(RTL_DIR)/coretransform/*.sv)	\
        	$(wildcard $(RTL_DIR)/dctransform/*.sv)		\
        	$(wildcard $(RTL_DIR)/intra4x4/*.sv)		\
-       	$(wildcard $(RTL_DIR)/intra8x8/*.sv)		
+       	$(wildcard $(RTL_DIR)/intra8x8/*.sv)		\
+		$(wildcard $(RTL_DIR)/inter_mc/*.sv)		\
+		$(wildcard $(RTL_DIR)/inter_prediction/*.sv)
 #       	$(wildcard $(RTL_DIR)/inter_prediction/*.sv)		
 
 
