@@ -10,7 +10,7 @@ module h264topsim(input bit clk2);
 
     // Inter-PrediSEARCH_DIMction
     localparam MACRO_DIM  = 16;
-    localparam SEARCH_DIM = 48;
+    localparam SEARCH_DIM = 18;
     localparam PORT_WIDTH = MACRO_DIM + 1;
 
     import "DPI-C" context task dpi_open_file(input string filename);
@@ -251,7 +251,7 @@ module h264topsim(input bit clk2);
     logic pred_type; // 0->I, 1->P
     assign pred_type = ((framenum % (frame_distance + 1)) == 0) ? 0 : 1;
 
-    logic        rst_n;
+    // logic        rst_n;
     //logic        clk;
     logic        start;
     logic        en_ram;
@@ -269,6 +269,8 @@ module h264topsim(input bit clk2);
     logic inter_me_VALIDO;
 
     logic [15:0] trans_addr [MACRO_DIM:0];
+
+    assign rst_n = ~top_NEWSLICE;
 
     me # 
     (
@@ -310,7 +312,7 @@ module h264topsim(input bit clk2);
                 end
             else if (inter_me_VALIDO && inter_me_READYO)
                 begin
-                    // $display("Inter/Intra Mode Selected at Inter Module Output");
+                    $display("%0t || Inter/Intra Mode Selected at Inter Module Output, framenum = %2d, mode = %2d",$time,framenum,(min_sad <= 1000));
                     inter_flag_valid <= 1;
                     inter_flag <= framenum == 1 ? 0 : (min_sad <= 1000);
                     inter_mvx  <= mv_x;
@@ -1104,10 +1106,10 @@ module h264topsim(input bit clk2);
                 // Inter-Prediction Logic
                 if (inter_me_READYI) 
                     begin
-                        @(posedge clk2);
-
                         top_NEWLINE = 0;
                         top_NEWSLICE = 0;
+
+                        @(posedge clk2)
 
                         start = 1;
                     end
@@ -1124,7 +1126,7 @@ module h264topsim(input bit clk2);
 
                     if (en_cpr)
                     begin
-                        for (l = 0; l < MACRO_DIM - 1; l++)
+                        for (l = 0; l < MACRO_DIM; l++)
                         begin
                                 pixel_cpr_in[l] = yvideo[mb_x + addr][mb_y + amt];
                         end
@@ -1132,7 +1134,7 @@ module h264topsim(input bit clk2);
 
                     if (en_spr)
                     begin
-                        for (l = 0; l <= MACRO_DIM; l++)
+                        for (l = 0; l <= MACRO_DIM + 1; l++)
                         begin
                             up_pad      = ( $signed(mb_y + SEARCH_DIM - MACRO_DIM - amt )  < 0 );
                             down_pad    = ( $signed(mb_y + SEARCH_DIM - MACRO_DIM - amt )  > IMGHEIGHT );
@@ -1151,7 +1153,7 @@ module h264topsim(input bit clk2);
             end
 
 
-            $display("Done push of data into intra4x4 and intra8x8cc");
+            $display("Done push of data into intra4x4 and intra8x8cc or inter mc");
             if (!xbuffer_DONE)
             begin
                 wait (xbuffer_DONE == 1);

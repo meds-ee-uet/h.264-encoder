@@ -33,6 +33,7 @@ module me #
     (
         .rst_n              ( rst_n              ),
         .clk                ( clk                ),
+        .reset_sum          ( reset_sum          ),
         .amt                ( amt                ),
         .addr               ( addr               ),
         .en_spr             ( en_spr             ),
@@ -56,6 +57,7 @@ module me #
         .rst_n      ( rst_n     ), 
         .clk        ( clk       ), 
         .start      ( start     ),
+        .reset_sum  ( reset_sum ),
         .readyi     ( readyi    ),
         .comp_en    ( comp_en   ),
         .en_cpr     ( en_cpr    ), 

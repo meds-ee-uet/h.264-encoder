@@ -2,6 +2,7 @@ module comparator
 (
     input  logic        clk,
     input  logic        rst_n,
+    input  logic        reset_sum,
     input  logic        comp_en,
     input  logic [5:0]  addr,
     input  logic [5:0]  amt,
@@ -12,7 +13,7 @@ module comparator
 );
     always_ff @(posedge clk)
     begin
-        if (!rst_n)
+        if (!rst_n || reset_sum)
         begin
             min_sad <= 16'hffff;
         end

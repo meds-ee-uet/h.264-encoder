@@ -294,7 +294,7 @@ module h264buffer
 		begin
 			assert (ix == 0) else $warning("VALIDI has fallen when in middle of block severity WARNING");
 		end 
-		//
+		
 		if (!NEWSLICE && !HVALID && imb!=omb && ((TREADYO && READYO) || ox!=0)) 
 		begin
 			//output

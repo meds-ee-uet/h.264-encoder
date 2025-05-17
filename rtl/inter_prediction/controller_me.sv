@@ -8,6 +8,7 @@ module controller_me
     input  logic       rst_n, 
     input  logic       clk, 
     input  logic       start,
+    output logic       reset_sum,
     output logic       readyi,
     output logic       comp_en,
     output logic       en_cpr, 
@@ -170,6 +171,7 @@ module controller_me
                 rst_count = 1;
                 amt       = 0;
                 en_ram    = 0;
+                reset_sum = 1;
             end
             S1: // CPR Load State
             begin
@@ -183,6 +185,7 @@ module controller_me
                 en_count_dec = 0;
                 sel          = 1;
                 en_ram       = 1;
+                reset_sum    = 0;
             end
             S2: // Counter Reset State
             begin 
@@ -193,6 +196,7 @@ module controller_me
                 en_spr    = 0;
                 rst_count = 1;
                 en_ram    = 0;
+                reset_sum    = 0;
             end
             S3: // SPR Load State
             begin 
@@ -206,6 +210,7 @@ module controller_me
                 en_count_dec = 0;
                 sel          = 1;
                 en_ram       = 1;
+                reset_sum    = 0;
             end
             S4: // Upshift State
             begin 
@@ -221,6 +226,7 @@ module controller_me
                 sel_to_end   = 0;
                 sel             = 1;
                 en_ram          = 1;
+                reset_sum       = 0;
             end
             S5: // Leftshift after Up State 
             begin
@@ -236,6 +242,7 @@ module controller_me
                 sel          = 2;
                 amt          = amt + 1;
                 en_ram       = 0;
+                reset_sum    = 0;
             end
             S6: // Downshift State
             begin
@@ -249,6 +256,7 @@ module controller_me
                 en_count_dec = 1;
                 sel          = 0;
                 en_ram       = 1;
+                reset_sum    = 0;
             end
             S7: // Leftshift after Down State
             begin
@@ -265,6 +273,7 @@ module controller_me
                 sel          = 2;
                 amt          = amt + 1;
                 en_ram       = 0;
+                reset_sum    = 0;
             end
 
             S8:
@@ -281,6 +290,7 @@ module controller_me
                 sel_to_end       = 0;
                 amt                 = amt;
                 en_ram              = 0;
+                reset_sum    = 0;
             end
         endcase
     end

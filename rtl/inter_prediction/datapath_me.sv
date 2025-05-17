@@ -6,6 +6,7 @@ module datapath_me #
 (
     input  logic         rst_n,
     input  logic         clk,
+    input  logic         reset_sum,
     input  logic [5:0]   addr,
     input  logic [5:0]   amt,
     input  logic         en_spr,
@@ -89,15 +90,16 @@ module datapath_me #
     
     comparator ins_comparator
     (
-        .clk     ( clk      ),
-        .rst_n   ( rst_n    ),
-        .comp_en ( comp_en  ),
-        .addr    ( addr     ),
-        .amt     ( amt      ),
-        .sad     ( wire_sad ),
-        .min_sad ( min_sad  ),
-        .mv_x    ( mv_x     ),
-        .mv_y    ( mv_y     )
+        .clk        ( clk       ),
+        .rst_n      ( rst_n     ),
+        .reset_sum  ( reset_sum ),
+        .comp_en    ( comp_en   ),
+        .addr       ( addr      ),
+        .amt        ( amt       ),
+        .sad        ( wire_sad  ),
+        .min_sad    ( min_sad   ),
+        .mv_x       ( mv_x      ),
+        .mv_y       ( mv_y      )
     );
 
 endmodule
