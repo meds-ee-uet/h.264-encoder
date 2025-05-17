@@ -11,6 +11,8 @@ module me #
     input  logic [7:0]  pixel_cpr_in [0:MACRO_DIM-1],
     output logic        readyi,
     output logic        en_ram,
+    output logic        en_cpr,
+    output logic        en_spr,
     input  logic        readyo,
     output logic        valido,
     output logic [5:0]  addr,

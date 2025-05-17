@@ -19,8 +19,8 @@ module h264header
 	// --- SHOULD BE SENT AS 0 ---
 	input logic [1:0] PTYPE,	        //0=P16x16,1=P16x8,2=P8x16,3=subtypes
 	input logic [1:0] PSUBTYPE,	//only if PTYPE=b"11"
-	input logic [11:0] MVDX,	        //signed MVD X (qtr pixel)
-	input logic [11:0] MVDY,	        //signed MVD Y (qtr pixel)
+	input logic signed [11:0] MVDX,	        //signed MVD X (qtr pixel)
+	input logic signed [11:0] MVDY,	        //signed MVD Y (qtr pixel)
 	//out:
 	output logic [19:0] VE = 20'd0,
 	output logic [4:0] VL = 5'd0,

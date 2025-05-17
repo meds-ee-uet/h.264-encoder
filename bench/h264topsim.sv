@@ -250,11 +250,6 @@ module h264topsim(input bit clk2);
     logic pred_type; // 0->I, 1->P
     assign pred_type = ((framenum % (frame_distance + 1)) == 0) ? 0 : 1;
 
-    // input to MC module is through these registers
-    logic [7:0] search_block_reg_y[0:SEARCH_DIM-1][0:SEARCH_DIM-1];
-    logic [7:0] search_block_reg_u[0:SEARCH_DIM/2-1][0:SEARCH_DIM/2-1];
-    logic [7:0] search_block_reg_v[0:SEARCH_DIM/2-1][0:SEARCH_DIM/2-1];
-
     logic        rst_n;
     //logic        clk;
     logic        start;
@@ -284,6 +279,8 @@ module h264topsim(input bit clk2);
         .pixel_cpr_in       ( pixel_cpr_in       ),
         .readyi             ( inter_me_READYI    ),
         .en_ram             ( en_ram             ),
+        .en_cpr             ( en_cpr             ),
+        .en_spr             ( en_spr             ),
         .readyo             ( inter_me_READYO    ),
         .valido             ( inter_me_VALIDO    ),
         .addr               ( addr               ),
@@ -316,7 +313,7 @@ module h264topsim(input bit clk2);
             else if (inter_me_VALIDO && inter_me_READYO)
                 begin
                     inter_flag_valid <= 1;
-                    inter_flag <= (min_sad <= 1000);
+                    inter_flag <= framenum == 1 ? 0 : (min_sad <= 1000);
                     inter_mvx  <= mv_x;
                     inter_mvy  <= mv_y;
                 end
@@ -429,8 +426,8 @@ module h264topsim(input bit clk2);
     logic header_CSTROBE;
     logic header_SINTRA;
     logic header_MINTRA;
-    logic [11:0] header_MVDX;
-    logic [11:0] header_MVDY;
+    logic signed [11:0] header_MVDX;
+    logic signed [11:0] header_MVDY;
 
     assign header_LSTROBE = (intra4x4_STROBEO && intra4x4_READYO) || (inter_mc_VALIDO && inter_mc_READYO);
     // cstrobe only required in intra mb
@@ -439,8 +436,8 @@ module h264topsim(input bit clk2);
     assign header_SINTRA  = (framenum == 1);
     // MINTRA >> MACROBLOCK INTRA >> can be inter mode or intra mode
     assign header_MINTRA  = inter_flag;
-    assign header_MVDX = MACRO_DIM - inter_mvx;
-    assign header_MVDY = MACRO_DIM - inter_mvy;
+    assign header_MVDX = $signed(SEARCH_DIM - MACRO_DIM - inter_mvx);
+    assign header_MVDY = $signed(SEARCH_DIM - MACRO_DIM - inter_mvy);
 
     h264header header
     (
@@ -847,6 +844,8 @@ module h264topsim(input bit clk2);
             cx = 0;
             cy = 0;
             cuv = 0;
+            mb_x = 0;
+            mb_y = 0;
 
             @(posedge clk2);
 
@@ -918,10 +917,10 @@ module h264topsim(input bit clk2);
                                 yvideo[x][y]
                             };
                             inter_mc_REF = {
-                                search_block_reg_y[inter_mvx + (x % 16) +3][inter_mvy + (y % 16)], 
-                                search_block_reg_y[inter_mvx + (x % 16) +2][inter_mvy + (y % 16)], 
-                                search_block_reg_y[inter_mvx + (x % 16) +1][inter_mvy + (y % 16)], 
-                                search_block_reg_y[inter_mvx + (x % 16) ][inter_mvy + (y % 16)]
+                                yrvideo_ref[inter_mvx + x +3][inter_mvy + y], 
+                                yrvideo_ref[inter_mvx + x +2][inter_mvy + y], 
+                                yrvideo_ref[inter_mvx + x +1][inter_mvy + y], 
+                                yrvideo_ref[inter_mvx + x ][inter_mvy + y]
                             };
                             @(posedge clk2);
                             y = y + 1;
@@ -1039,10 +1038,10 @@ module h264topsim(input bit clk2);
                                             uvideo[cx ][cy]
                                         };
                                         inter_mc_REF = {
-                                            search_block_reg_u[inter_mvx + (cx % 8) + 3][inter_mvy + (cy % 8)], 
-                                            search_block_reg_u[inter_mvx + (cx % 8) + 2][inter_mvy + (cy % 8)], 
-                                            search_block_reg_u[inter_mvx + (cx % 8) + 1][inter_mvy + (cy % 8)], 
-                                            search_block_reg_u[inter_mvx + (cx % 8) ][inter_mvy + (cy % 8)]
+                                            urvideo_ref[(inter_mvx >> 2) + cx + 3][(inter_mvy >> 2) + cy], 
+                                            urvideo_ref[(inter_mvx >> 2) + cx + 2][(inter_mvy >> 2) + cy], 
+                                            urvideo_ref[(inter_mvx >> 2) + cx + 1][(inter_mvy >> 2) + cy], 
+                                            urvideo_ref[(inter_mvx >> 2) + cx ][(inter_mvy >> 2) + cy]
                                         };
                                     end
                                     else
@@ -1054,10 +1053,10 @@ module h264topsim(input bit clk2);
                                             vvideo[cx ][cy]
                                         };
                                         inter_mc_REF = {
-                                            search_block_reg_v[inter_mvx + (cx % 8) + 3][inter_mvy + (cy % 8)], 
-                                            search_block_reg_v[inter_mvx + (cx % 8) + 2][inter_mvy + (cy % 8)], 
-                                            search_block_reg_v[inter_mvx + (cx % 8) + 1][inter_mvy + (cy % 8)], 
-                                            search_block_reg_v[inter_mvx + (cx % 8) ][inter_mvy + (cy % 8)]
+                                            vrvideo_ref[(inter_mvx >> 2) + cx + 3][(inter_mvy >> 2) + cy], 
+                                            vrvideo_ref[(inter_mvx >> 2) + cx + 2][(inter_mvy >> 2) + cy], 
+                                            vrvideo_ref[(inter_mvx >> 2) + cx + 1][(inter_mvy >> 2) + cy], 
+                                            vrvideo_ref[(inter_mvx >> 2) + cx ][(inter_mvy >> 2) + cy]
                                         };
                                     end
                                     @(posedge clk2);
@@ -1096,17 +1095,7 @@ module h264topsim(input bit clk2);
                 // Update macroblock position and search block address after inter-prediction completes
                 if (inter_me_VALIDO && inter_me_READYO) 
                     begin
-                        // Calculate the absolute address of the search block in yrvideo_curr
-                        search_block_addr = (mb_y - SEARCH_DIM / 2) * IMGWIDTH + (mb_x - SEARCH_DIM / 2);
-                
-                        // Ensure the search block stays within bounds using zero-padding
-                        if (mb_x - SEARCH_DIM / 2 < 0 || mb_y - SEARCH_DIM / 2 < 0 ||
-                            mb_x + SEARCH_DIM / 2 >= IMGWIDTH || mb_y + SEARCH_DIM / 2 >= IMGHEIGHT) begin
-                            $display("Zero-padding applied for macroblock at (%d, %d)", mb_x, mb_y);
-                        end
-                
-                        // Update macroblock position for the next iteration
-                        mb_x <= mb_x + 16; // Move to the next macroblock in the row
+                        mb_x = mb_x + 16; // Move to the next macroblock in the row
                         if (mb_x + 16 >= IMGWIDTH) begin
                             mb_x = 0; // Reset to the first column
                             mb_y = mb_y + 16; // Move to the next row
@@ -1115,88 +1104,37 @@ module h264topsim(input bit clk2);
                         @(posedge clk2);
                     end
                 
+                integer up_pad,down_pad,left_pad,right_pad;
                 // Inter-Prediction Logic
                 if (inter_me_READYI == 1 && !inter_flag_valid) 
                     begin                    
                         // Load macroblock data into pixel_cpr_in
-                        for (l = 0; l < MACRO_DIM; l++) 
+                        if (en_ram)
+                        begin
+                            if (en_cpr)
                             begin
-                                if (en_ram) 
-                                    begin
-                                        pixel_cpr_in[l] = yvideo[l + x][addr + y];
-                                    end
+                                for (l = 0; l < MACRO_DIM; l++) 
+                                begin
+                                     pixel_cpr_in[l] = yvideo[mb_x + addr][mb_y + amt];
+                                end
                             end
-                    
-                        // Load the search block data into pixel_spr_in and simultaneously store it in search_block_reg_y with zero-padding
-                        for (l = 0; l < PORT_WIDTH; l++) 
+
+                            if (en_spr)
                             begin
-                                if (en_ram) 
-                                    begin
-                                        x_idx = (search_block_addr % IMGWIDTH) + l + amt;
-                                        y_idx = (search_block_addr / IMGWIDTH);
-                            
-                                        // Apply zero-padding for out-of-bounds indices
-                                        if (x_idx < 0 || x_idx >= IMGWIDTH || y_idx < 0 || y_idx >= IMGHEIGHT) 
-                                            begin
-                                                pixel_spr_in[l] = 0; // Zero-pad out-of-bounds pixels
-                                            end 
-                                        else 
-                                            begin
-                                                pixel_spr_in[l] = yrvideo_curr[x_idx][y_idx]; // Load pixel into pixel_spr_in
-                                            end
-                            
-                                        // Store the corresponding pixel in search_block_reg_y
-                                        row = l / SEARCH_DIM;
-                                        col = l % SEARCH_DIM;
-                            
-                                        if (x_idx < 0 || x_idx >= IMGWIDTH || y_idx < 0 || y_idx >= IMGHEIGHT) 
-                                            begin
-                                                search_block_reg_y[row][col] = 0; // Zero-pad out-of-bounds pixels
-                                            end 
-                                        else 
-                                            begin
-                                                search_block_reg_y[row][col] = yrvideo_curr[x_idx][y_idx]; // Store pixel in search_block_reg_y
-                                            end
-                            
-                                        // Chroma-specific logic for U and V components (YUV 4:2:0 FORMAT)
-                                        x_idx_chroma = (search_block_addr % (IMGWIDTH / 2)) + (l / 2) + (amt / 2);
-                                        y_idx_chroma = (search_block_addr / (IMGWIDTH / 2));
-                            
-                                        // Store U component in search_block_reg_u
-                                        if (x_idx_chroma < 0 || x_idx_chroma >= IMGWIDTH / 2 || y_idx_chroma < 0 || y_idx_chroma >= IMGHEIGHT / 2) 
-                                            begin
-                                                search_block_reg_u[row / 2][col / 2] = 0; // Zero-pad out-of-bounds pixels
-                                            end 
-                                        else 
-                                            begin
-                                                search_block_reg_u[row / 2][col / 2] = urvideo_curr[x_idx_chroma][y_idx_chroma]; // Store pixel in search_block_reg_u
-                                            end
-                            
-                                        // Store V component in search_block_reg_v
-                                        if (x_idx_chroma < 0 || x_idx_chroma >= IMGWIDTH / 2 || y_idx_chroma < 0 || y_idx_chroma >= IMGHEIGHT / 2) 
-                                            begin
-                                                search_block_reg_v[row / 2][col / 2] = 0; // Zero-pad out-of-bounds pixels
-                                            end 
-                                        else 
-                                            begin
-                                                search_block_reg_v[row / 2][col / 2] = vrvideo_curr[x_idx_chroma][y_idx_chroma]; // Store pixel in search_block_reg_v
-                                            end
-                                    end
+                                for (l = 0; l <= MACRO_DIM; l++)
+                                begin
+                                    up_pad      = ( $signed(mb_y + SEARCH_DIM - MACRO_DIM - amt )  < 0 );
+                                    down_pad    = ( $signed(mb_y + SEARCH_DIM - MACRO_DIM - amt )  > IMGHEIGHT );
+                                    left_pad    = ( $signed(mb_x + SEARCH_DIM - MACRO_DIM - addr ) < 0 ); 
+                                    right_pad   = ( $signed(mb_x + SEARCH_DIM - MACRO_DIM - addr ) > IMGWIDTH );
+
+                                    if (up_pad || down_pad || left_pad || right_pad)
+                                        pixel_spr_in = '0;  // Zero Padding on Out of Bound Cases
+                                    else
+                                        pixel_spr_in = yrvideo_ref[mb_x + SEARCH_DIM - MACRO_DIM - addr][mb_y + SEARCH_DIM - MACRO_DIM - amt];
+                                end
                             end
-                    
-                        // Update trans_addr based on amt
-                        for (f = 0; f < PORT_WIDTH; f++) 
-                            begin
-                                if (f < amt) 
-                                    begin
-                                        trans_addr[f] = search_block_addr + SEARCH_DIM;
-                                    end 
-                                else 
-                                    begin
-                                        trans_addr[f] = search_block_addr;
-                                    end
-                            end
-                    
+                        end
                         @(posedge clk2);
                         start = 1;
                     end
