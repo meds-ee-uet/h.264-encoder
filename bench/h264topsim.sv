@@ -1101,47 +1101,46 @@ module h264topsim(input bit clk2);
                             mb_x = 0; // Reset to the first column
                             mb_y = mb_y + 16; // Move to the next row
                         end
-
-                        @(posedge clk2);
                     end
                 
                 // Inter-Prediction Logic
-                if (inter_me_READYI == 1 && !inter_flag_valid) 
+                if (inter_me_READYI) 
                     begin
-                        // Load macroblock data into pixel_cpr_in
-                        if (en_ram)
-                        begin
-                            if (en_cpr)
-                            begin
-                                for (l = 0; l < MACRO_DIM - 1; l++)
-                                begin
-                                     pixel_cpr_in[l] = yvideo[mb_x + addr][mb_y + amt];
-                                end
-                            end
-
-                            if (en_spr)
-                            begin
-                                for (l = 0; l <= MACRO_DIM; l++)
-                                begin
-                                    up_pad      = ( $signed(mb_y + SEARCH_DIM - MACRO_DIM - amt )  < 0 );
-                                    down_pad    = ( $signed(mb_y + SEARCH_DIM - MACRO_DIM - amt )  > IMGHEIGHT );
-                                    left_pad    = ( $signed(mb_x + SEARCH_DIM - MACRO_DIM - addr ) < 0 ); 
-                                    right_pad   = ( $signed(mb_x + SEARCH_DIM - MACRO_DIM - addr ) > IMGWIDTH );
-
-                                    if (up_pad || down_pad || left_pad || right_pad)
-                                        pixel_spr_in[l] = '0;  // Zero Padding on Out of Bound Cases
-                                    else
-                                        pixel_spr_in[l] = yrvideo_ref[mb_x + SEARCH_DIM - MACRO_DIM - addr][mb_y + SEARCH_DIM - MACRO_DIM - amt];
-                                end
-                            end
-                        end
-                        @(posedge clk2);
                         start = 1;
                     end
                 else
                     begin
                         start = 0;
                     end
+
+                // Load macroblock data into pixel_cpr_in
+                if (en_ram)
+                begin
+                    if (en_cpr)
+                    begin
+                        for (l = 0; l < MACRO_DIM - 1; l++)
+                        begin
+                                pixel_cpr_in[l] = yvideo[mb_x + addr][mb_y + amt];
+                        end
+                    end
+
+                    if (en_spr)
+                    begin
+                        for (l = 0; l <= MACRO_DIM; l++)
+                        begin
+                            up_pad      = ( $signed(mb_y + SEARCH_DIM - MACRO_DIM - amt )  < 0 );
+                            down_pad    = ( $signed(mb_y + SEARCH_DIM - MACRO_DIM - amt )  > IMGHEIGHT );
+                            left_pad    = ( $signed(mb_x + SEARCH_DIM - MACRO_DIM - addr ) < 0 ); 
+                            right_pad   = ( $signed(mb_x + SEARCH_DIM - MACRO_DIM - addr ) > IMGWIDTH );
+
+                            if (up_pad || down_pad || left_pad || right_pad)
+                                pixel_spr_in[l] = '0;  // Zero Padding on Out of Bound Cases
+                            else
+                                pixel_spr_in[l] = yrvideo_ref[mb_x + SEARCH_DIM - MACRO_DIM - addr][mb_y + SEARCH_DIM - MACRO_DIM - amt];
+                        end
+                    end
+                end
+
                 @(posedge clk2);
             end
 
