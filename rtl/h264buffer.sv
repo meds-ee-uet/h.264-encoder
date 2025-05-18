@@ -164,6 +164,7 @@ module h264buffer
 					ix <= ix + 1;
 					if (ix==15) 
 					begin
+						$display("%0t || XBUFFER || Luma Recieved",$time);	
 						isubmb <= isubmb+1;
 						ichf <= ~isubmb[0];	//switch to chroma after even blocks
 						if (isubmb==0 || isubmb==8) 
@@ -191,6 +192,7 @@ module h264buffer
 					buffer_FULL <= 1'b0;
 					if (ix==3) 
 					begin
+						$display("%0t || XBUFFER || Chroma DC Recieved",$time);	
 						ix <= 4'h0;
 						ichdc <= 1'b0;
 					end
@@ -205,6 +207,7 @@ module h264buffer
 					ix <= ix + 1;
 					if (ix==15) 
 					begin
+						$display("%0t || XBUFFER || Chroma AC Recieved",$time);	
 						ichsubmb <= ichsubmb + 1;
 						ichf <= 1'b0;
 					end 

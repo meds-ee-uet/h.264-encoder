@@ -8,10 +8,10 @@ module h264topsim(input bit clk2);
     localparam IMGBITS      = 8;
     localparam INITQP       = 28;
 
-    // Inter-PrediSEARCH_DIMction
+    // Inter-Prediction
     localparam MACRO_DIM  = 16;
-    localparam SEARCH_DIM = 18;
-    localparam PORT_WIDTH = MACRO_DIM + 1;
+    localparam SEARCH_DIM = 32;
+    // localparam PORT_WIDTH = MACRO_DIM + 1;
 
     import "DPI-C" context task dpi_open_file(input string filename);
     import "DPI-C" context task dpi_write_byte(input byte c);
@@ -52,7 +52,8 @@ module h264topsim(input bit clk2);
     integer search_block_addr; // Absolute address of the search block in the buffer
     reg [IMGBITS-1:0] c;
 
-    integer luma_processed = 0;
+    integer luma_pushed = 0;
+    integer chroma_pushed = 0;
 	
 	// Signals
 
@@ -95,8 +96,8 @@ module h264topsim(input bit clk2);
     logic inter_flag_valid;
     logic inter_flag_reset;
     logic inter_flag;
-    logic [11:0] inter_mvx;
-    logic [11:0] inter_mvy;
+    logic [5:0] inter_mvx;
+    logic [5:0] inter_mvy;
 
     //Intra8x8cc Wires
     logic intra8x8cc_READYI;
@@ -159,28 +160,6 @@ module h264topsim(input bit clk2);
     logic recon_FBSTROBE;
     logic recon_FBCSTROBE;
     logic [31:0] recon_FEEDB;
-
-    logic xbuffer_NLOAD_intra;
-	logic [2:0] xbuffer_NX_intra;
-	logic [2:0] xbuffer_NY_intra;	
-	logic [1:0] xbuffer_NV_intra;
-	logic xbuffer_NXINC_intra;		
-	logic xbuffer_READYI_intra;
-	logic xbuffer_CCIN_intra;
-	logic xbuffer_DONE_intra;
-    logic xbuffer_VOUT_intra;
-    logic xbuffer_VALIDO_intra;
-
-    logic xbuffer_NLOAD_inter;
-	logic [2:0] xbuffer_NX_inter;
-	logic [2:0] xbuffer_NY_inter;	
-	logic [1:0] xbuffer_NV_inter;
-	logic xbuffer_NXINC_inter;		
-	logic xbuffer_READYI_inter;
-	logic xbuffer_CCIN_inter;
-	logic xbuffer_DONE_inter;
-    logic xbuffer_VOUT_inter;
-    logic xbuffer_VALIDO_inter;
 
     logic xbuffer_NLOAD;
 	logic [2:0] xbuffer_NX;
@@ -309,6 +288,10 @@ module h264topsim(input bit clk2);
                     inter_flag <= 0;
                     inter_mvx <= '0;
                     inter_mvy <= '0;
+                    if (inter_flag_reset)
+                    begin
+                        $display("%0t || Inter Flag Reset",$time);	
+                    end
                 end
             else if (inter_me_VALIDO && inter_me_READYO)
                 begin
@@ -331,8 +314,8 @@ module h264topsim(input bit clk2);
     (
         .CLK                ( clk2                  ), 
         .NEWSLICE           ( top_NEWSLICE          ), 
-        .NEWLINE            ( top_NEWLINE           ),
-        .STROBEI            ( intra4x4_STROBEI      ),
+        .NEWLINE            ( top_NEWLINE || xbuffer_FULL           ),
+        .STROBEI            ( intra4x4_STROBEI || (luma_pushed && chroma_pushed)      ),
         .DATAI              ( intra4x4_DATAI        ), 
         .READYI             ( intra4x4_READYI       ),
         .TOPI               ( intra4x4_TOPI         ), 
@@ -858,7 +841,25 @@ module h264topsim(input bit clk2);
                     cy = cy - (cy % 8);
                     cuv = 0;
                 end
-                if ((intra4x4_READYI || inter_mc_READYI) && (y < IMGHEIGHT) && inter_flag_valid )
+
+                if (inter_me_READYO && inter_me_VALIDO)
+                begin
+                    luma_pushed = 0;
+                    chroma_pushed = 0;
+
+                    mb_x = mb_x + 16; // Move to the next macroblock in the row
+                    if (mb_x >= IMGWIDTH) begin
+                        mb_x = 0; // Reset to the first column
+                        mb_y = mb_y + 16; // Move to the next row
+                    end
+
+                    $display("%0t || Luma + Chroma Push Flags RESET || x = %2d, y = %2d, mb_x = %2d, mb_y = %2d",$time,x,y,mb_x,mb_y);
+
+                    $display("\033[32m%0t || mb_x, mb_y increment!\033[0m",$time);	
+                    @(posedge clk2);
+                end
+
+                if ((intra4x4_READYI || inter_mc_READYI) && (y < IMGHEIGHT) && inter_flag_valid && !luma_pushed)
                 begin
                     @(posedge clk2);
 
@@ -892,11 +893,14 @@ module h264topsim(input bit clk2);
                         if ((y % 16) == 0)
                         begin
                             x = x + 16;
-                            y = y - 16;			
+                            y = y - 16;
+                            luma_pushed = 1;	
+                            $display("\033[33m%0t || Luma Block Pushed\033[0m || x = %2d, y  = %2d",$time,x,y);		
                             if (x == IMGWIDTH)
                             begin
                                 x = 0;			
                                 y = y + 16;
+                                $display("\033[31m%0t || Awaiting xbuffer_DONE\033[0m",$time);
                                 if (xbuffer_DONE == 0)
                                     wait (xbuffer_DONE == 1);
                                 top_NEWLINE = 1;
@@ -904,7 +908,7 @@ module h264topsim(input bit clk2);
                             end
                         end
                     end 
-                    else if ( (inter_flag == 1) && (!luma_processed) )
+                    else if (inter_flag == 1)
                     begin
                         // INTER mode selected
                         inter_mc_VALIDI = 1;
@@ -948,11 +952,13 @@ module h264topsim(input bit clk2);
                                         begin
                                             y = y - 16;
                                             x = x + 16;
-                                            luma_processed = 1;
+                                            luma_pushed = 1;
+                                            $display("%0t || Luma Block Pushed || x = %2d, y = %2d",$time,x,y);	
                                             if (x == IMGWIDTH)
                                             begin
                                                 x = 0;
                                                 y = y + 16;
+                                                $display("\033[31m%0t || Awaiting xbuffer_DONE\033[0m",$time);
                                                 if (xbuffer_DONE == 0)
                                                     wait (xbuffer_DONE == 1);
                                                 top_NEWLINE = 1;
@@ -966,7 +972,7 @@ module h264topsim(input bit clk2);
                     end
                 end
 
-                if ((intra8x8cc_READYI || inter_mc_READYI) && (cy < IMGHEIGHT/2) && inter_flag_valid)
+                if ((intra8x8cc_READYI || inter_mc_READYI) && (cy < IMGHEIGHT/2) && inter_flag_valid && !chroma_pushed)
                     begin
                         @(posedge clk2);
 
@@ -1015,6 +1021,8 @@ module h264topsim(input bit clk2);
                                     cuv = 0;
                                     cy = cy - 8;
                                     cx = cx + 8;
+                                    chroma_pushed = 1;
+                                    $display(" \033[33m%0t || Chroma Block Pushed \033[0m ",$time);	
                                     if (cx == IMGWIDTH/2)
                                     begin
                                         cx = 0;	
@@ -1023,7 +1031,7 @@ module h264topsim(input bit clk2);
                                 end
                             end
                         end
-                        else if ( (inter_flag == 1) && luma_processed)
+                        else if ( (inter_flag == 1) && luma_pushed)
                         begin
                             // INTER mode selected
                             inter_mc_VALIDI = 1;
@@ -1080,7 +1088,9 @@ module h264topsim(input bit clk2);
                                         begin
                                             cuv = 0;
                                             cx  = cx + 8;
-                                            luma_processed = 0;
+                                            luma_pushed = 0;
+                                            chroma_pushed = 1;
+                                            $display("%0t || Chroma Block Pushed",$time);	
                                             if (cx == IMGWIDTH/2)
                                             begin
                                                 cx = 0;
@@ -1093,16 +1103,6 @@ module h264topsim(input bit clk2);
                         end                        
                     end
                 
-                // Update macroblock position and search block address after inter-prediction completes
-                if (inter_me_VALIDO && inter_me_READYO) 
-                    begin
-                        mb_x = mb_x + 16; // Move to the next macroblock in the row
-                        if (mb_x + 16 >= IMGWIDTH) begin
-                            mb_x = 0; // Reset to the first column
-                            mb_y = mb_y + 16; // Move to the next row
-                        end
-                    end
-                
                 // Inter-Prediction Logic
                 if (inter_me_READYI) 
                     begin
@@ -1112,6 +1112,7 @@ module h264topsim(input bit clk2);
                         @(posedge clk2)
 
                         start = 1;
+                        $display("%0t || Inter Module Started",$time);	
                     end
                 else
                     begin
@@ -1119,34 +1120,23 @@ module h264topsim(input bit clk2);
                     end
 
                 // Load macroblock data into pixel_cpr_in
-                if (en_ram)
+                for (l = 0; l < MACRO_DIM; l++)
                 begin
-                    top_NEWLINE = 0;
-                    top_NEWSLICE = 0;
+                        pixel_cpr_in[l] = yvideo[mb_x + addr][mb_y + amt];
+                end
 
-                    if (en_cpr)
-                    begin
-                        for (l = 0; l < MACRO_DIM; l++)
-                        begin
-                                pixel_cpr_in[l] = yvideo[mb_x + addr][mb_y + amt];
-                        end
-                    end
+                
+                for (l = 0; l <= MACRO_DIM + 1; l++)
+                begin
+                    up_pad      = ( $signed(mb_y + SEARCH_DIM - MACRO_DIM - amt + l )  < 0 );
+                    down_pad    = ( $signed(mb_y + SEARCH_DIM - MACRO_DIM - amt + l )  > IMGHEIGHT );
+                    left_pad    = ( $signed(mb_x + SEARCH_DIM - MACRO_DIM - addr ) < 0 ); 
+                    right_pad   = ( $signed(mb_x + SEARCH_DIM - MACRO_DIM - addr ) > IMGWIDTH );
 
-                    if (en_spr)
-                    begin
-                        for (l = 0; l <= MACRO_DIM + 1; l++)
-                        begin
-                            up_pad      = ( $signed(mb_y + SEARCH_DIM - MACRO_DIM - amt )  < 0 );
-                            down_pad    = ( $signed(mb_y + SEARCH_DIM - MACRO_DIM - amt )  > IMGHEIGHT );
-                            left_pad    = ( $signed(mb_x + SEARCH_DIM - MACRO_DIM - addr ) < 0 ); 
-                            right_pad   = ( $signed(mb_x + SEARCH_DIM - MACRO_DIM - addr ) > IMGWIDTH );
-
-                            if (up_pad || down_pad || left_pad || right_pad)
-                                pixel_spr_in[l] = '0;  // Zero Padding on Out of Bound Cases
-                            else
-                                pixel_spr_in[l] = yrvideo_ref[mb_x + SEARCH_DIM - MACRO_DIM - addr][mb_y + SEARCH_DIM - MACRO_DIM - amt];
-                        end
-                    end
+                    if (up_pad || down_pad || left_pad || right_pad)
+                        pixel_spr_in[l] = '0;  // Zero Padding on Out of Bound Cases
+                    else
+                        pixel_spr_in[l] = yrvideo_ref[mb_x + SEARCH_DIM - MACRO_DIM - addr][mb_y + SEARCH_DIM - MACRO_DIM - amt];
                 end
 
                 @(posedge clk2);
