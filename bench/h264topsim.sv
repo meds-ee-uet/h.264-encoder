@@ -93,6 +93,10 @@ module h264topsim(input bit clk2);
 	logic intra4x4_XXINC;
 	logic intra4x4_CHREADY;
 
+    logic [35:0] intra4x4_fctrl_DATAO;
+    logic intra4x4_fctrl_STROBEO;
+    logic intra4x4_fctrl_ENABLE;
+
     logic inter_flag_valid;
     logic inter_flag_reset;
     logic inter_flag;
@@ -114,6 +118,13 @@ module h264topsim(input bit clk2);
 	logic [1:0] intra8x8cc_XXO;
 	logic intra8x8cc_XXC;
 	logic intra8x8cc_XXINC;
+
+    logic intra8x8cc_fctrl_STROBEO;
+    logic [35:0] intra8x8cc_fctrl_DATAO;
+    logic intra8x8cc_fctrl_ENABLE;
+    logic intra8x8cc_fctrl_DCENABLE;
+    logic [15:0] intra8x8cc_fctrl_DCDATAO;
+    logic intra8x8cc_fctrl_DCSTROBEO;
 
     logic [1:0] header_CMODE = 2'b00;
     logic [19:0] header_VE;
@@ -315,7 +326,7 @@ module h264topsim(input bit clk2);
         .CLK                ( clk2                  ), 
         .NEWSLICE           ( top_NEWSLICE          ), 
         .NEWLINE            ( top_NEWLINE || xbuffer_FULL           ),
-        .STROBEI            ( intra4x4_STROBEI || (luma_pushed && chroma_pushed)      ),
+        .STROBEI            ( intra4x4_STROBEI || (luma_pushed && intra4x4_READYI && inter_flag_valid)      ),
         .DATAI              ( intra4x4_DATAI        ), 
         .READYI             ( intra4x4_READYI       ),
         .TOPI               ( intra4x4_TOPI         ), 
@@ -339,12 +350,31 @@ module h264topsim(input bit clk2);
     assign intra4x4_TOPI   = toppix[{mbx, intra4x4_XXO}];
     assign intra4x4_TOPMI  = topmode[{mbx, intra4x4_XXO}];
 
+    fctrl #
+    (
+        .MAX_COUNT          (16),
+        .DATA_WIDTH         (36)
+    )
+    fctrl_intra4x4
+    (
+        .clk                ( clk2                      ),
+        .RESET              ( xbuffer_FULL              ),
+        .VALIDI             ( intra4x4_STROBEO          ),
+        .DC                 ( 0                         ),
+        .inter_flag_valid   ( inter_flag_valid          ),
+        .VALIDO             ( intra4x4_fctrl_STROBEO    ),
+        .DATAI              ( intra4x4_DATAO            ),
+        .DATAO              ( intra4x4_fctrl_DATAO      ),
+        .ENABLE             ( intra4x4_fctrl_ENABLE     )
+    );
+
     h264intra8x8cc intra8x8cc
     (
         .CLK2               ( clk2                  ),
+        .RST_N              ( xbuffer_FULL          ),
         .NEWSLICE           ( top_NEWSLICE          ), 
         .NEWLINE            ( top_NEWLINE           ), 
-        .STROBEI            ( intra8x8cc_STROBEI    ), 
+        .STROBEI            ( intra8x8cc_STROBEI || (chroma_pushed && intra8x8cc_READYI && inter_flag_valid)    ), 
         .DATAI              ( intra8x8cc_DATAI      ), 
         .READYI             ( intra8x8cc_READYI     ),
         .TOPI               ( intra8x8cc_TOPI       ), 
@@ -363,6 +393,42 @@ module h264topsim(input bit clk2);
     );
 
     assign intra8x8cc_TOPI = toppixcc[{mbxcc, intra8x8cc_XXO}];
+
+    fctrl #
+    (
+        .MAX_COUNT          (8),
+        .DATA_WIDTH         (16)
+    )
+    fctrl_intra8x8cc_DC
+    (
+        .clk                ( clk2                          ),
+        .RESET              ( xbuffer_FULL                  ),
+        .VALIDI             ( intra8x8cc_DCSTROBEO          ),
+        .DC                 ( 1                             ),
+        .inter_flag_valid   ( inter_flag_valid              ),
+        .VALIDO             ( intra8x8cc_fctrl_DCSTROBEO    ),
+        .DATAI              ( intra8x8cc_DCDATAO            ),
+        .DATAO              ( intra8x8cc_fctrl_DCDATAO      ),
+        .ENABLE             ( intra8x8cc_fctrl_DCENABLE     )
+    );
+
+    fctrl #
+    (
+        .MAX_COUNT          (8),
+        .DATA_WIDTH         (36)
+    )
+    fctrl_intra8x8cc_AC
+    (
+        .clk                ( clk2                          ),
+        .RESET              ( xbuffer_FULL                  ),
+        .VALIDI             ( intra8x8cc_STROBEO            ),
+        .DC                 ( 0                             ),
+        .inter_flag_valid   ( inter_flag_valid              ),
+        .VALIDO             ( intra8x8cc_fctrl_STROBEO      ),
+        .DATAI              ( intra8x8cc_DATAO              ),
+        .DATAO              ( intra8x8cc_fctrl_DATAO        ),
+        .ENABLE             ( intra8x8cc_fctrl_ENABLE       )
+    );
 
     logic [31:0] inter_mc_REF;
     logic [31:0] inter_mc_CURR;
@@ -413,9 +479,9 @@ module h264topsim(input bit clk2);
     logic signed [11:0] header_MVDX;
     logic signed [11:0] header_MVDY;
 
-    assign header_LSTROBE = (intra4x4_STROBEO && intra4x4_READYO) || (inter_mc_VALIDO && inter_mc_READYO);
+    assign header_LSTROBE = (intra4x4_fctrl_STROBEO && intra4x4_READYO) || (inter_mc_VALIDO && inter_mc_READYO);
     // cstrobe only required in intra mb
-    assign header_CSTROBE = (intra4x4_STROBEO && intra4x4_READYO);
+    assign header_CSTROBE = (intra4x4_fctrl_STROBEO && intra4x4_READYO);
     // SINTRA >> SLICE INTRA >> Only first frame will be IDR, rest are non-IDR
     assign header_SINTRA  = (framenum == 1);
     // MINTRA >> MACROBLOCK INTRA >> can be inter mode or intra mode
@@ -456,10 +522,10 @@ module h264topsim(input bit clk2);
         .YNOUT              ( coretransform_YNOUT   )
     );
 
-    assign coretransform_ENABLE = intra4x4_STROBEO || intra8x8cc_STROBEO || inter_mc_VALIDO;
+    assign coretransform_ENABLE = intra4x4_fctrl_STROBEO || intra8x8cc_fctrl_STROBEO || inter_mc_VALIDO;
 	// assign coretransform_XXIN = intra4x4_STROBEO ? intra4x4_DATAO : intra8x8cc_DATAO;
-	assign recon_BSTROBEI = intra4x4_STROBEO | intra8x8cc_STROBEO;
-	assign recon_BASEI = intra4x4_STROBEO ? intra4x4_BASEO : intra8x8cc_BASEO;
+	assign recon_BSTROBEI = intra4x4_fctrl_STROBEO | intra8x8cc_fctrl_STROBEO;
+	assign recon_BASEI = intra4x4_fctrl_STROBEO ? intra4x4_BASEO : intra8x8cc_BASEO;
 
     always_comb 
         begin
@@ -471,7 +537,7 @@ module h264topsim(input bit clk2);
                         end
                     else
                         begin
-                            coretransform_XXIN = intra4x4_STROBEO ? intra4x4_DATAO : intra8x8cc_DATAO;
+                            coretransform_XXIN = intra4x4_fctrl_STROBEO ? intra4x4_fctrl_DATAO : intra8x8cc_fctrl_DATAO;
                         end
                 end
         end
@@ -492,8 +558,8 @@ module h264topsim(input bit clk2);
         .READYO             ( dctransform_READYO        )
     );
 
-    assign dctransform_ENABLE = inter_mc_DCCO_VALID || intra8x8cc_DCSTROBEO;
-    assign dctransform_XXIN   = (inter_flag) ? inter_mc_DCCO : intra8x8cc_DCDATAO;
+    assign dctransform_ENABLE = inter_mc_DCCO_VALID || intra8x8cc_fctrl_DCSTROBEO;
+    assign dctransform_XXIN   = (inter_flag) ? inter_mc_DCCO : intra8x8cc_fctrl_DCDATAO;
     assign dctransform_READYO = (intra4x4_CHREADY && ~coretransform_VALID);
 
     h264quantise quantise
@@ -608,7 +674,7 @@ module h264topsim(input bit clk2);
         .STROBEI            ( invtransform_VALID        ), 
         .DATAI              ( invtransform_XOUT         ),
         .BSTROBEI           ( recon_BSTROBEI            ),
-        .BCHROMAI           ( intra8x8cc_STROBEO        ), 
+        .BCHROMAI           ( intra8x8cc_fctrl_STROBEO  ), 
         .BASEI              ( recon_BASEI               ),
         .STROBEO            ( recon_FBSTROBE            ), 
         .CSTROBEO           ( recon_FBCSTROBE           ), 
@@ -842,7 +908,7 @@ module h264topsim(input bit clk2);
                     cuv = 0;
                 end
 
-                if (inter_me_READYO && inter_me_VALIDO)
+                if (inter_me_VALIDO && inter_me_READYO)
                 begin
                     luma_pushed = 0;
                     chroma_pushed = 0;
@@ -1253,7 +1319,7 @@ module h264topsim(input bit clk2);
 	begin
 		assert (!(header_VALID && cavlc_VALID)) else $error("Two strobes clash.");
 		assert (!(coretransform_VALID && dctransform_VALIDO)) else $error("Two strobes clash.");
-		assert (!(intra4x4_STROBEO && intra8x8cc_STROBEO)) else $error("Two strobes clash.");
+		assert (!(intra4x4_fctrl_STROBEO && intra8x8cc_fctrl_STROBEO)) else $error("Two strobes clash.");
 		assert (!($isunknown(cavlc_VIN)));
 	end
 
